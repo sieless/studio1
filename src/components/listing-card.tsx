@@ -15,7 +15,9 @@ type ListingCardProps = {
 
 export function ListingCard({ listing, isSubscribed }: ListingCardProps) {
   const [showContact, setShowContact] = useState(false);
-  const [imgSrc, setImgSrc] = useState(listing.image);
+  // Use the first image in the array, or a placeholder if the array is empty.
+  const initialImgSrc = listing.images && listing.images.length > 0 ? listing.images[0] : `https://placehold.co/600x400/EEE/31343C?text=${listing.type}`;
+  const [imgSrc, setImgSrc] = useState(initialImgSrc);
 
   const fallbackImg = `https://placehold.co/600x400/EEE/31343C?text=${listing.type}`;
 

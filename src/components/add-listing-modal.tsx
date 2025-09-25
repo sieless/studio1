@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -50,7 +50,6 @@ import { houseTypes, locations, featureOptions } from '@/lib/constants';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles, Loader2, Wand2, UploadCloud } from 'lucide-react';
-import { type ListingFormData } from '@/types';
 import { updateDocumentNonBlocking } from '@/firebase';
 
 
@@ -59,7 +58,7 @@ const listingSchema = z.object({
   location: z.string().min(1, 'Location is required.'),
   price: z.coerce.number().min(1, 'Price is required.'),
   contact: z.string().min(10, 'A valid contact number is required.'),
-  image: z.any().refine(file => file instanceof File, 'Image is required.'),
+  images: z.any().refine((files) => files?.length > 0, 'At least one image is required.'),
   features: z.array(z.string()).optional(),
 });
 
@@ -93,24 +92,30 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
     },
   });
 
-  const imageFile = form.watch('image');
+  const imageFiles = form.watch('images');
+
+  const selectedFileNames = useMemo(() => {
+    if (!imageFiles || imageFiles.length === 0) {
+      return 'Click to upload images';
+    }
+    return Array.from(imageFiles).map(file => file.name).join(', ');
+  }, [imageFiles]);
+
 
   const handleAnalyzeImage = async () => {
-    if (!imageFile) {
+    if (!imageFiles || imageFiles.length === 0) {
       setAnalysisError('Please select an image file first.');
       return;
     }
     setAnalysisError(null);
     setAnalysisResult(null);
 
+    const firstImage = imageFiles[0];
     const reader = new FileReader();
-    reader.readAsDataURL(imageFile);
+    reader.readAsDataURL(firstImage);
     reader.onload = () => {
       const dataUri = reader.result as string;
       const formData = new FormData();
-      // We are cheating here by passing data URI to a function that expects a URL
-      // This is because our server action is set up to fetch a URL.
-      // A better approach would be to have the server action accept a data URI directly.
       formData.append('image', dataUri);
       
       startTransition(async () => {
@@ -136,25 +141,27 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
 
     setIsSubmitting(true);
     
-
     try {
-      // 1. Create listing with a placeholder image
+      // 1. Create listing with placeholder images
       const listingData = {
         ...data,
-        image: 'https://placehold.co/600x400/EEE/31343C', // Placeholder
+        images: [], // Start with an empty array
         userId: user.uid,
         createdAt: serverTimestamp(),
       };
       
       const docRef = await addDoc(collection(db, 'listings'), listingData);
 
-      // 2. Start image upload in the background (non-blocking)
-      uploadImage(data.image, user.uid, (progress) => {
-        // Optional: you could use this progress to show a global indicator
-        console.log(`Upload is ${progress}% done`);
-      }).then(async (imageUrl) => {
-        // 3. Once upload is complete, update the document with the real URL
-        updateDocumentNonBlocking(doc(db, "listings", docRef.id), { image: imageUrl });
+      // 2. Start image uploads in the background (non-blocking)
+      const uploadPromises = Array.from(data.images).map(file => 
+        uploadImage(file, user.uid, (progress) => {
+          console.log(`Upload is ${progress}% done`);
+        })
+      );
+
+      Promise.all(uploadPromises).then(async (imageUrls) => {
+        // 3. Once all uploads are complete, update the document with the real URLs
+        updateDocumentNonBlocking(doc(db, "listings", docRef.id), { images: imageUrls });
         
         // Add listing to user's profile
         const userRef = doc(db, 'users', user.uid);
@@ -163,18 +170,18 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
         });
 
       }).catch(error => {
-        console.error("Image upload failed:", error);
+        console.error("Image uploads failed:", error);
         toast({
             variant: "destructive",
             title: "Image upload failed",
-            description: "Your listing was created, but the image failed to upload. You may need to edit the listing to add it again.",
+            description: "Your listing was created, but the images failed to upload. You may need to edit the listing to add them again.",
         });
       });
 
 
       toast({
         title: 'Success!',
-        description: 'Your listing is being created. The image will appear shortly.',
+        description: 'Your listing is being created. The images will appear shortly.',
       });
 
       form.reset();
@@ -191,6 +198,8 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
       setIsSubmitting(false);
     }
   };
+
+  const imagesField = form.register('images');
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -301,25 +310,25 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
 
               <FormField
                 control={form.control}
-                name="image"
-                render={({ field: { onChange, value, ...rest } }) => (
+                name="images"
+                render={() => (
                   <FormItem>
-                    <FormLabel>Property Image</FormLabel>
+                    <FormLabel>Property Images</FormLabel>
                      <FormControl>
                         <div className="relative flex items-center gap-2">
-                           <label htmlFor="image-upload" className="flex-grow h-10 flex items-center justify-center rounded-md border border-input bg-background px-3 py-2 text-sm text-muted-foreground ring-offset-background cursor-pointer hover:bg-accent hover:text-accent-foreground">
-                             <UploadCloud className="mr-2" />
-                             {value?.name || 'Click to upload an image'}
+                           <label htmlFor="image-upload" className="flex-grow h-10 flex items-center justify-center rounded-md border border-input bg-background px-3 py-2 text-sm text-muted-foreground ring-offset-background cursor-pointer hover:bg-accent hover:text-accent-foreground truncate">
+                             <UploadCloud className="mr-2 flex-shrink-0" />
+                             <span className="truncate">{selectedFileNames}</span>
                            </label>
                            <Input
                               id="image-upload"
                               type="file"
                               className="sr-only"
                               accept="image/*"
-                              onChange={(e) => onChange(e.target.files?.[0])}
-                              {...rest}
+                              multiple
+                              {...imagesField}
                             />
-                            <Button type="button" variant="outline" onClick={handleAnalyzeImage} disabled={isAnalyzing || !imageFile}>
+                            <Button type="button" variant="outline" onClick={handleAnalyzeImage} disabled={isAnalyzing || !imageFiles || imageFiles.length === 0}>
                               {isAnalyzing ? <Loader2 className="animate-spin" /> : <Wand2 />}
                               <span className="ml-2 hidden md:inline">Analyze Image</span>
                             </Button>

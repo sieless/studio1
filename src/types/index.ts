@@ -7,7 +7,7 @@ export type Listing = {
   location: string;
   price: number;
   features: string[];
-  image: string;
+  images: string[];
   contact: string;
   createdAt: Timestamp;
 };
@@ -17,6 +17,6 @@ export type ListingFormData = {
   location: string;
   price: number;
   contact: string;
-  image: File;
+  images: FileList;
   features: string[];
 }

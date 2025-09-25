@@ -63,9 +63,13 @@
           "type": "string",
           "description": "Contact phone number for the landlord."
         },
-        "image": {
-          "type": "string",
-          "description": "URL of the property image."
+        "images": {
+          "type": "array",
+          "description": "URLs of the property images.",
+          "items": {
+            "type": "string",
+            "format": "uri"
+          }
         },
         "features": {
           "type": "array",
@@ -87,7 +91,7 @@
         "location",
         "price",
         "contact",
-        "image",
+        "images",
         "createdAt"
       ]
     },
