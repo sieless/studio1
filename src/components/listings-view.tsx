@@ -153,30 +153,34 @@ export function ListingsView() {
       <Header onPostClick={handlePostClick} />
       <Hero />
       <main className="flex-grow w-full">
-         {loading ? (
-            <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8"><LoadingSkeletons /></div>
-        ) : (
-          <>
-            {featuredListings.length > 0 && (
-                <FeaturedListings listings={featuredListings} isSubscribed={isSubscribed} />
-            )}
-            <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-                <RentalTypes onTypeSelect={handleTypeSelect} selectedType={filters.type} />
-                <FilterPanel filters={filters} onFilterChange={handleFilterChange} />
-                <h2 className="text-3xl font-bold text-foreground mb-6">
-                    All Properties ({regularListings.length})
-                </h2>
-                <ListingGrid listings={visibleListings} isSubscribed={isSubscribed} />
-                {hasMore && (
-                  <div className="text-center mt-10">
-                    <Button onClick={handleLoadMore} size="lg">
-                      Load More Properties
-                    </Button>
-                  </div>
-                )}
+         <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+           {loading ? (
+              <LoadingSkeletons />
+          ) : (
+            <div className="space-y-12">
+              <RentalTypes onTypeSelect={handleTypeSelect} selectedType={filters.type} />
+              
+              {featuredListings.length > 0 && (
+                  <FeaturedListings listings={featuredListings} isSubscribed={isSubscribed} />
+              )}
+              
+              <div>
+                  <FilterPanel filters={filters} onFilterChange={handleFilterChange} />
+                  <h2 className="text-3xl font-bold text-foreground mb-6">
+                      All Properties ({regularListings.length})
+                  </h2>
+                  <ListingGrid listings={visibleListings} isSubscribed={isSubscribed} />
+                  {hasMore && (
+                    <div className="text-center mt-10">
+                      <Button onClick={handleLoadMore} size="lg">
+                        Load More Properties
+                      </Button>
+                    </div>
+                  )}
+              </div>
             </div>
-          </>
-        )}
+          )}
+        </div>
       </main>
       <Footer />
       {isModalOpen && (
