@@ -50,6 +50,23 @@ function ListingSkeleton() {
   );
 }
 
+function ImageWithFallback({ src, fallback, alt, ...props }: any) {
+  const [error, setError] = useState(false);
+
+  const handleError = () => {
+    setError(true);
+  };
+
+  return (
+    <Image
+      alt={alt}
+      src={error ? fallback : src}
+      onError={handleError}
+      {...props}
+    />
+  );
+}
+
 export default function MyListingsPage() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -143,8 +160,9 @@ export default function MyListingsPage() {
               <Card key={listing.id} className="overflow-hidden flex flex-col">
                 <Link href={`/listings/${listing.id}`} className="block">
                   <div className="relative h-56 w-full">
-                    <Image
-                      src={listing.images[0] || `https://placehold.co/600x400/EEE/31343C?text=${listing.type}`}
+                    <ImageWithFallback
+                      src={(listing.images && listing.images.length > 0) ? listing.images[0] : `https://placehold.co/600x400/EEE/31343C?text=${listing.type.replace(/\s/g, '+')}`}
+                      fallback={`https://placehold.co/600x400/EEE/31343C?text=${listing.type.replace(/\s/g, '+')}`}
                       alt={listing.type}
                       fill
                       className="object-cover"

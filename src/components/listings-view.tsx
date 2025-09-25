@@ -20,14 +20,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { RentalTypes } from './rental-types';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { Hero } from './hero';
+import { FeaturedListings } from './featured-listings';
+import { Button } from './ui/button';
 
 
 function LoadingSkeletons() {
   return (
     <div>
-      <h2 className="text-2xl font-bold text-foreground mb-6">
-        Finding Properties...
-      </h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
         {Array.from({ length: 6 }).map((_, i) => (
           <div
@@ -57,10 +57,14 @@ function LoadingSkeletons() {
   );
 }
 
+const INITIAL_VISIBLE_COUNT = 6;
+
 export function ListingsView() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
+
   const [filters, setFilters] = useState({
     location: 'All',
     type: 'All',
@@ -72,7 +76,6 @@ export function ListingsView() {
   const router = useRouter();
   const { toast } = useToast();
 
-  // This is a placeholder for a real subscription check
   const isSubscribed = useMemo(() => !!user, [user]);
 
   useEffect(() => {
@@ -94,6 +97,7 @@ export function ListingsView() {
 
   const handleFilterChange = (name: string, value: string | number) => {
     setFilters(prev => ({ ...prev, [name]: value }));
+    setVisibleCount(INITIAL_VISIBLE_COUNT);
   };
   
   const handleTypeSelect = (type: string) => {
@@ -114,26 +118,64 @@ export function ListingsView() {
     }
   };
 
-  const filteredListings = useMemo(() => {
-    return listings.filter(listing => {
-      const locationMatch =
-        filters.location === 'All' || listing.location === filters.location;
-      const typeMatch = filters.type === 'All' || listing.type === filters.type;
-      const priceMatch = listing.price <= filters.maxPrice;
-      return locationMatch && typeMatch && priceMatch;
+  const { featuredListings, regularListings } = useMemo(() => {
+    const filtered = listings.filter(listing => {
+        const locationMatch =
+            filters.location === 'All' || listing.location === filters.location;
+        const typeMatch = filters.type === 'All' || listing.type === filters.type;
+        const priceMatch = listing.price <= filters.maxPrice;
+        return locationMatch && typeMatch && priceMatch;
     });
+
+    // Take the first 2 for featured, if no filters are active
+    const featured = (filters.location === 'All' && filters.type === 'All') 
+      ? listings.slice(0, 2) 
+      : [];
+
+    return {
+        featuredListings: featured,
+        regularListings: filtered,
+    }
   }, [listings, filters]);
+
+  const visibleListings = useMemo(() => {
+    return regularListings.slice(0, visibleCount);
+  }, [regularListings, visibleCount]);
+
+  const handleLoadMore = () => {
+    setVisibleCount(prevCount => prevCount + INITIAL_VISIBLE_COUNT);
+  }
+
+  const hasMore = visibleCount < regularListings.length;
 
   return (
     <div className="flex flex-col min-h-screen">
       <Header onPostClick={handlePostClick} />
-      <main className="flex-grow max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 w-full">
-        <RentalTypes onTypeSelect={handleTypeSelect} selectedType={filters.type} />
-        <FilterPanel filters={filters} onFilterChange={handleFilterChange} />
-        {loading ? (
-          <LoadingSkeletons />
+      <Hero />
+      <main className="flex-grow w-full">
+         {loading ? (
+            <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8"><LoadingSkeletons /></div>
         ) : (
-          <ListingGrid listings={filteredListings} isSubscribed={isSubscribed} />
+          <>
+            {featuredListings.length > 0 && (
+                <FeaturedListings listings={featuredListings} isSubscribed={isSubscribed} />
+            )}
+            <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+                <RentalTypes onTypeSelect={handleTypeSelect} selectedType={filters.type} />
+                <FilterPanel filters={filters} onFilterChange={handleFilterChange} />
+                <h2 className="text-3xl font-bold text-foreground mb-6">
+                    All Properties ({regularListings.length})
+                </h2>
+                <ListingGrid listings={visibleListings} isSubscribed={isSubscribed} />
+                {hasMore && (
+                  <div className="text-center mt-10">
+                    <Button onClick={handleLoadMore} size="lg">
+                      Load More Properties
+                    </Button>
+                  </div>
+                )}
+            </div>
+          </>
         )}
       </main>
       <Footer />

@@ -64,11 +64,28 @@ function ListingDetailSkeleton() {
   );
 }
 
+function ImageWithFallback({ src, fallback, alt, ...props }: any) {
+  const [error, setError] = useState(false);
+
+  const handleError = () => {
+    setError(true);
+  };
+
+  return (
+    <Image
+      alt={alt}
+      src={error ? fallback : src}
+      onError={handleError}
+      {...props}
+    />
+  );
+}
+
+
 export default function ListingDetailPage() {
   const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
   const [showContact, setShowContact] = useState(false);
-  const [imgError, setImgError] = useState<string | null>(null);
 
   const db = useFirestore();
   const params = useParams();
@@ -115,7 +132,7 @@ export default function ListingDetailPage() {
     );
   }
 
-  const fallbackImg = `https://placehold.co/800x600/E0F8F8/008080?text=${listing.type}`;
+  const fallbackImg = `https://placehold.co/800x600/E0F8F8/008080?text=${listing.type.replace(/\s/g, '+')}`;
   const images = (listing.images && listing.images.length > 0) ? listing.images : [fallbackImg];
 
   return (
@@ -136,14 +153,14 @@ export default function ListingDetailPage() {
               {images.map((imgUrl, index) => (
                 <CarouselItem key={index}>
                   <div className="relative aspect-[16/10] w-full">
-                    <Image
-                      src={imgError === imgUrl ? fallbackImg : imgUrl}
+                    <ImageWithFallback
+                      src={imgUrl}
+                      fallback={fallbackImg}
                       alt={`${listing.type} - image ${index + 1}`}
                       fill
                       className="object-cover"
                       priority={index === 0}
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 800px"
-                       onError={() => setImgError(imgUrl)}
                        data-ai-hint="house interior"
                     />
                   </div>
