@@ -17,6 +17,6 @@ export type ListingFormData = {
   location: string;
   price: number;
   contact: string;
-  images: FileList;
+  images: File[];
   features: string[];
 }

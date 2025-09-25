@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useTransition, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
+import { useState, useTransition, useMemo, ChangeEvent } from 'react';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import {
@@ -16,6 +16,7 @@ import { useFirestore, useUser } from '@/firebase';
 import { uploadImage } from '@/firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { analyzeListingImage } from '@/app/actions';
+import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -36,7 +37,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -45,20 +45,20 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Progress } from '@/components/ui/progress';
 import { houseTypes, locations, featureOptions } from '@/lib/constants';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Loader2, Wand2, UploadCloud } from 'lucide-react';
+import { Sparkles, Loader2, Wand2, UploadCloud, X } from 'lucide-react';
 import { updateDocumentNonBlocking } from '@/firebase';
-
 
 const listingSchema = z.object({
   type: z.string().min(1, 'House type is required.'),
   location: z.string().min(1, 'Location is required.'),
   price: z.coerce.number().min(1, 'Price is required.'),
   contact: z.string().min(10, 'A valid contact number is required.'),
-  images: z.any().refine((files) => files?.length > 0, 'At least one image is required.'),
+  images: z
+    .array(z.instanceof(File))
+    .min(1, 'At least one image is required.'),
   features: z.array(z.string()).optional(),
 });
 
@@ -75,7 +75,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
     suggestedImprovements: string;
   } | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
-  
+  const [analyzedImageIndex, setAnalyzedImageIndex] = useState<number | null>(null);
 
   const { toast } = useToast();
   const { user } = useUser();
@@ -89,35 +89,42 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
       price: 5000,
       contact: '',
       features: [],
+      images: [],
     },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: 'images',
   });
 
   const imageFiles = form.watch('images');
 
-  const selectedFileNames = useMemo(() => {
-    if (!imageFiles || imageFiles.length === 0) {
-      return 'Click to upload images';
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    if (event.target.files) {
+      const files = Array.from(event.target.files);
+      // Filter out files that might already be in the list by name
+      const newFiles = files.filter(
+        file => !imageFiles.some(existingFile => existingFile.name === file.name)
+      );
+      if (newFiles.length > 0) {
+        append(newFiles);
+      }
     }
-    return Array.from(imageFiles).map(file => file.name).join(', ');
-  }, [imageFiles]);
+  };
 
-
-  const handleAnalyzeImage = async () => {
-    if (!imageFiles || imageFiles.length === 0) {
-      setAnalysisError('Please select an image file first.');
-      return;
-    }
+  const handleAnalyzeImage = async (imageFile: File, index: number) => {
     setAnalysisError(null);
     setAnalysisResult(null);
+    setAnalyzedImageIndex(index);
 
-    const firstImage = imageFiles[0];
     const reader = new FileReader();
-    reader.readAsDataURL(firstImage);
+    reader.readAsDataURL(imageFile);
     reader.onload = () => {
       const dataUri = reader.result as string;
       const formData = new FormData();
       formData.append('image', dataUri);
-      
+
       startTransition(async () => {
         const result = await analyzeListingImage(formData);
         if (result.error) {
@@ -126,7 +133,10 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
           setAnalysisResult(result.analysis);
         }
       });
-    }
+    };
+    reader.onerror = () => {
+      setAnalysisError('Could not read the image file.');
+    };
   };
 
   const onSubmit = async (data: z.infer<typeof listingSchema>) => {
@@ -140,7 +150,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
     }
 
     setIsSubmitting(true);
-    
+
     try {
       // 1. Create listing with placeholder images
       const listingData = {
@@ -149,44 +159,47 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
         userId: user.uid,
         createdAt: serverTimestamp(),
       };
-      
+
       const docRef = await addDoc(collection(db, 'listings'), listingData);
 
       // 2. Start image uploads in the background (non-blocking)
-      const uploadPromises = Array.from(data.images).map(file => 
-        uploadImage(file, user.uid, (progress) => {
+      const uploadPromises = data.images.map(file =>
+        uploadImage(file, user.uid, progress => {
           console.log(`Upload is ${progress}% done`);
         })
       );
 
-      Promise.all(uploadPromises).then(async (imageUrls) => {
-        // 3. Once all uploads are complete, update the document with the real URLs
-        updateDocumentNonBlocking(doc(db, "listings", docRef.id), { images: imageUrls });
-        
-        // Add listing to user's profile
-        const userRef = doc(db, 'users', user.uid);
-        updateDocumentNonBlocking(userRef, {
+      Promise.all(uploadPromises)
+        .then(async imageUrls => {
+          // 3. Once all uploads are complete, update the document with the real URLs
+          updateDocumentNonBlocking(doc(db, 'listings', docRef.id), {
+            images: imageUrls,
+          });
+
+          // Add listing to user's profile
+          const userRef = doc(db, 'users', user.uid);
+          updateDocumentNonBlocking(userRef, {
             listings: arrayUnion(docRef.id),
+          });
+        })
+        .catch(error => {
+          console.error('Image uploads failed:', error);
+          toast({
+            variant: 'destructive',
+            title: 'Image upload failed',
+            description:
+              'Your listing was created, but the images failed to upload. You may need to edit the listing to add them again.',
+          });
         });
-
-      }).catch(error => {
-        console.error("Image uploads failed:", error);
-        toast({
-            variant: "destructive",
-            title: "Image upload failed",
-            description: "Your listing was created, but the images failed to upload. You may need to edit the listing to add them again.",
-        });
-      });
-
 
       toast({
         title: 'Success!',
-        description: 'Your listing is being created. The images will appear shortly.',
+        description:
+          'Your listing is being created. The images will appear shortly.',
       });
 
       form.reset();
       onClose();
-
     } catch (error) {
       console.error('Error adding document: ', error);
       toast({
@@ -198,8 +211,6 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
       setIsSubmitting(false);
     }
   };
-
-  const imagesField = form.register('images');
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -308,36 +319,61 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="images"
-                render={() => (
-                  <FormItem>
-                    <FormLabel>Property Images</FormLabel>
-                     <FormControl>
-                        <div className="relative flex items-center gap-2">
-                           <label htmlFor="image-upload" className="flex-grow h-10 flex items-center justify-center rounded-md border border-input bg-background px-3 py-2 text-sm text-muted-foreground ring-offset-background cursor-pointer hover:bg-accent hover:text-accent-foreground truncate">
-                             <UploadCloud className="mr-2 flex-shrink-0" />
-                             <span className="truncate">{selectedFileNames}</span>
-                           </label>
-                           <Input
-                              id="image-upload"
-                              type="file"
-                              className="sr-only"
-                              accept="image/*"
-                              multiple
-                              {...imagesField}
-                            />
-                            <Button type="button" variant="outline" onClick={handleAnalyzeImage} disabled={isAnalyzing || !imageFiles || imageFiles.length === 0}>
-                              {isAnalyzing ? <Loader2 className="animate-spin" /> : <Wand2 />}
-                              <span className="ml-2 hidden md:inline">Analyze Image</span>
-                            </Button>
-                        </div>
-                      </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <FormItem>
+                <FormLabel>Property Images</FormLabel>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {fields.map((field, index) => (
+                    <div key={field.id} className="relative group aspect-square">
+                      <Image
+                        src={URL.createObjectURL(imageFiles[index])}
+                        alt={`Preview ${index}`}
+                        fill
+                        className="object-cover rounded-md"
+                      />
+                      <div className="absolute top-1 right-1 flex items-center gap-1">
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="h-6 w-6 opacity-80 group-hover:opacity-100"
+                          onClick={() => remove(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                       <Button
+                          type="button"
+                          size="sm"
+                          className="absolute bottom-1 left-1/2 -translate-x-1/2 h-7 opacity-80 group-hover:opacity-100"
+                          onClick={() => handleAnalyzeImage(imageFiles[index], index)}
+                          disabled={isAnalyzing}
+                        >
+                          {isAnalyzing && analyzedImageIndex === index ? (
+                            <Loader2 className="animate-spin" />
+                          ) : (
+                            <Wand2 className="mr-1 h-4 w-4" />
+                          )}
+                          Analyze
+                        </Button>
+                    </div>
+                  ))}
+                  <label htmlFor="image-upload" className="flex flex-col items-center justify-center aspect-square rounded-md border-2 border-dashed border-input bg-transparent cursor-pointer hover:bg-accent hover:text-accent-foreground text-muted-foreground">
+                     <UploadCloud className="h-8 w-8" />
+                     <span className="mt-2 text-sm text-center">Add more photos</span>
+                   </label>
+                  <Input
+                      id="image-upload"
+                      type="file"
+                      className="sr-only"
+                      accept="image/*"
+                      multiple
+                      onChange={handleFileChange}
+                    />
+                </div>
+                 <FormMessage>
+                  {form.formState.errors.images && form.formState.errors.images.message}
+                </FormMessage>
+              </FormItem>
 
               {(isAnalyzing || analysisResult || analysisError) && (
                 <Alert
