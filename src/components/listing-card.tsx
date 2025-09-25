@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Bed, MapPin, CheckCircle, Phone, Building } from "lucide-react";
+import { Bed, MapPin, CheckCircle, Phone, Building, School } from "lucide-react";
 import { type Listing } from "@/types";
 
 type ListingCardProps = {
@@ -21,6 +21,17 @@ export function ListingCard({ listing, isSubscribed }: ListingCardProps) {
   const [imgSrc, setImgSrc] = useState(initialImgSrc);
 
   const fallbackImg = `https://placehold.co/600x400/EEE/31343C?text=${listing.type}`;
+
+  const getPropertyIcon = (type: string) => {
+    const lowerType = type.toLowerCase();
+    if (lowerType.includes('bedroom') || lowerType === 'house') {
+      return <Bed className="w-4 h-4" />;
+    }
+    if (lowerType === 'hostel') {
+      return <School className="w-4 h-4" />;
+    }
+    return <Building className="w-4 h-4" />;
+  };
 
   return (
     <Card className="overflow-hidden group transform hover:-translate-y-1 transition-all duration-300 hover:shadow-xl flex flex-col">
@@ -47,7 +58,7 @@ export function ListingCard({ listing, isSubscribed }: ListingCardProps) {
               <MapPin className="w-4 h-4" /> {listing.location}
             </p>
             <p className="font-semibold flex items-center gap-2">
-              {listing.type.toLowerCase().includes('bedroom') || listing.type.toLowerCase() === 'house' ? <Bed className="w-4 h-4" /> : <Building className="w-4 h-4" />} {listing.type}
+              {getPropertyIcon(listing.type)} {listing.type}
             </p>
           </div>
           <h3 className="text-2xl font-bold text-foreground leading-tight">

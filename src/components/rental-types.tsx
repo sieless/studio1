@@ -1,7 +1,7 @@
 'use client';
 import { Card } from '@/components/ui/card';
 import { houseTypes } from '@/lib/constants';
-import { Bed, Building } from 'lucide-react';
+import { Bed, Building, School } from 'lucide-react';
 
 type RentalTypesProps = {
   onTypeSelect: (type: string) => void;
@@ -9,12 +9,23 @@ type RentalTypesProps = {
 };
 
 export function RentalTypes({ onTypeSelect, selectedType }: RentalTypesProps) {
+  const getPropertyIcon = (type: string) => {
+    const lowerType = type.toLowerCase();
+    if (lowerType.includes('bedroom') || lowerType.includes('bedsitter') || lowerType === 'house') {
+      return <Bed className="w-8 h-8 mb-2" />;
+    }
+    if (lowerType === 'hostel') {
+      return <School className="w-8 h-8 mb-2" />;
+    }
+    return <Building className="w-8 h-8 mb-2" />;
+  };
+  
   return (
     <div className="mb-8">
       <h2 className="text-2xl font-bold text-foreground mb-4">
         Browse by Category
       </h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
         {houseTypes.map(type => (
           <Card
             key={type}
@@ -25,11 +36,7 @@ export function RentalTypes({ onTypeSelect, selectedType }: RentalTypesProps) {
             }`}
             onClick={() => onTypeSelect(type)}
           >
-            {type.toLowerCase().includes('bedroom') || type.toLowerCase().includes('bedsitter') || type.toLowerCase() === 'house' ? (
-              <Bed className="w-8 h-8 mb-2" />
-            ) : (
-              <Building className="w-8 h-8 mb-2" />
-            )}
+            {getPropertyIcon(type)}
             <p className="font-semibold">{type}</p>
           </Card>
         ))}

@@ -28,7 +28,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
-import { MapPin, Bed, Building, PlusCircle } from 'lucide-react';
+import { MapPin, Bed, Building, PlusCircle, School } from 'lucide-react';
 import { DeleteListingDialog } from '@/components/delete-listing-dialog';
 import { useToast } from '@/hooks/use-toast';
 
@@ -135,6 +135,17 @@ export default function MyListingsPage() {
     }
   };
 
+  const getPropertyIcon = (type: string) => {
+    const lowerType = type.toLowerCase();
+    if (lowerType.includes('bedroom') || lowerType === 'house') {
+      return <Bed className="w-4 h-4" />;
+    }
+    if (lowerType === 'hostel') {
+      return <School className="w-4 h-4" />;
+    }
+    return <Building className="w-4 h-4" />;
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
       <Header onPostClick={() => router.push('/')} />
@@ -178,7 +189,7 @@ export default function MyListingsPage() {
                       <MapPin className="w-4 h-4" /> {listing.location}
                     </p>
                     <p className="font-semibold flex items-center gap-2">
-                      {listing.type.toLowerCase().includes('bedroom') || listing.type.toLowerCase() === 'house' ? <Bed className="w-4 h-4" /> : <Building className="w-4 h-4" />} {listing.type}
+                      {getPropertyIcon(listing.type)} {listing.type}
                     </p>
                   </div>
                 </CardHeader>

@@ -26,6 +26,7 @@ import {
   Phone,
   Building,
   ArrowLeft,
+  School,
 } from 'lucide-react';
 
 function ListingDetailSkeleton() {
@@ -116,6 +117,17 @@ export default function ListingDetailPage() {
 
     fetchListing();
   }, [id, db]);
+
+  const getPropertyIcon = (type: string) => {
+    const lowerType = type.toLowerCase();
+    if (lowerType.includes('bedroom') || lowerType === 'house') {
+      return <Bed className="w-4 h-4 text-primary" />;
+    }
+    if (lowerType === 'hostel') {
+      return <School className="w-4 h-4 text-primary" />;
+    }
+    return <Building className="w-4 h-4 text-primary" />;
+  };
   
   if (loading) {
     return <ListingDetailSkeleton />;
@@ -192,12 +204,7 @@ export default function ListingDetailPage() {
                 <MapPin className="w-4 h-4 text-primary" /> {listing.location}
               </p>
               <p className="font-semibold flex items-center gap-2">
-                {listing.type.toLowerCase().includes('bedroom') ||
-                listing.type.toLowerCase() === 'house' ? (
-                  <Bed className="w-4 h-4 text-primary" />
-                ) : (
-                  <Building className="w-4 h-4 text-primary" />
-                )}{' '}
+                {getPropertyIcon(listing.type)}
                 {listing.type}
               </p>
             </div>
