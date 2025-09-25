@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Home, LogOut, PlusCircle, User as UserIcon } from 'lucide-react';
+import { Home, LogOut, PlusCircle, User as UserIcon, LayoutGrid } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 
 type HeaderProps = {
@@ -87,6 +87,12 @@ export function Header({ onPostClick }: HeaderProps) {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                   <Link href="/my-listings">
+                    <LayoutGrid className="mr-2 h-4 w-4" />
+                    <span>My Listings</span>
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={onPostClick} className="sm:hidden">
                   <PlusCircle className="mr-2 h-4 w-4" />
                   <span>Post Listing</span>
