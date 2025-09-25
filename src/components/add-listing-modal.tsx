@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -51,6 +51,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles, Loader2, Wand2, UploadCloud } from 'lucide-react';
 import { type ListingFormData } from '@/types';
+import { updateDocumentNonBlocking } from '@/firebase';
+
 
 const listingSchema = z.object({
   type: z.string().min(1, 'House type is required.'),
@@ -74,7 +76,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
     suggestedImprovements: string;
   } | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  
 
   const { toast } = useToast();
   const { user } = useUser();
@@ -133,47 +135,60 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
     }
 
     setIsSubmitting(true);
-    setUploadProgress(0);
+    
 
     try {
-      const imageUrl = await uploadImage(
-        data.image,
-        user.uid,
-        setUploadProgress
-      );
-
+      // 1. Create listing with a placeholder image
       const listingData = {
         ...data,
-        image: imageUrl,
+        image: `https://picsum.photos/seed/${Date.now()}/600/400`, // Placeholder
         userId: user.uid,
         createdAt: serverTimestamp(),
       };
-
+      
       const docRef = await addDoc(collection(db, 'listings'), listingData);
 
-      // Add listing to user's profile
-      const userRef = doc(db, 'users', user.uid);
-      await updateDoc(userRef, {
-        listings: arrayUnion(docRef.id),
+      // 2. Start image upload in the background (non-blocking)
+      uploadImage(data.image, user.uid, (progress) => {
+        // Optional: you could use this progress to show a global indicator
+        console.log(`Upload is ${progress}% done`);
+      }).then(async (imageUrl) => {
+        // 3. Once upload is complete, update the document with the real URL
+        updateDocumentNonBlocking(doc(db, "listings", docRef.id), { image: imageUrl });
+        
+        // Add listing to user's profile
+        const userRef = doc(db, 'users', user.uid);
+        updateDocumentNonBlocking(userRef, {
+            listings: arrayUnion(docRef.id),
+        });
+
+      }).catch(error => {
+        console.error("Image upload failed:", error);
+        toast({
+            variant: "destructive",
+            title: "Image upload failed",
+            description: "Your listing was created, but the image failed to upload. You may need to edit the listing to add it again.",
+        });
       });
+
 
       toast({
         title: 'Success!',
-        description: 'Your listing has been added.',
+        description: 'Your listing is being created. The image will appear shortly.',
       });
 
       form.reset();
       onClose();
+
     } catch (error) {
       console.error('Error adding document: ', error);
       toast({
         variant: 'destructive',
         title: 'Uh oh! Something went wrong.',
-        description: 'Failed to add listing. Please try again.',
+        description: 'Failed to create listing. Please try again.',
       });
     } finally {
       setIsSubmitting(false);
-      setUploadProgress(null);
     }
   };
 
@@ -314,14 +329,6 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                   </FormItem>
                 )}
               />
-
-              {uploadProgress !== null && (
-                <div className="space-y-2">
-                  <Label>Uploading Image...</Label>
-                  <Progress value={uploadProgress} />
-                </div>
-              )}
-
 
               {(isAnalyzing || analysisResult || analysisError) && (
                 <Alert
