@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Hero } from './hero';
 import { FeaturedListings } from './featured-listings';
 import { Button } from './ui/button';
+import Link from 'next/link';
 
 
 function LoadingSkeletons() {
@@ -63,7 +64,6 @@ export function ListingsView() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
 
   const [filters, setFilters] = useState({
     location: 'All',
@@ -97,7 +97,6 @@ export function ListingsView() {
 
   const handleFilterChange = (name: string, value: string | number) => {
     setFilters(prev => ({ ...prev, [name]: value }));
-    setVisibleCount(INITIAL_VISIBLE_COUNT);
   };
   
   const handleTypeSelect = (type: string) => {
@@ -139,14 +138,10 @@ export function ListingsView() {
   }, [listings, filters]);
 
   const visibleListings = useMemo(() => {
-    return regularListings.slice(0, visibleCount);
-  }, [regularListings, visibleCount]);
+    return regularListings.slice(0, INITIAL_VISIBLE_COUNT);
+  }, [regularListings]);
 
-  const handleLoadMore = () => {
-    setVisibleCount(prevCount => prevCount + INITIAL_VISIBLE_COUNT);
-  }
-
-  const hasMore = visibleCount < regularListings.length;
+  const hasMore = regularListings.length > INITIAL_VISIBLE_COUNT;
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -172,8 +167,8 @@ export function ListingsView() {
                   <ListingGrid listings={visibleListings} isSubscribed={isSubscribed} />
                   {hasMore && (
                     <div className="text-center mt-10">
-                      <Button onClick={handleLoadMore} size="lg">
-                        Load More Properties
+                      <Button size="lg" asChild>
+                        <Link href="/all-properties">View All Properties</Link>
                       </Button>
                     </div>
                   )}
