@@ -1,15 +1,23 @@
-"use client";
+'use client';
 
-import { useState, useTransition, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { useToast } from "@/hooks/use-toast";
-import { analyzeListingImage } from "@/app/actions";
+import { useState, useTransition, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import {
+  addDoc,
+  collection,
+  serverTimestamp,
+  doc,
+  updateDoc,
+  arrayUnion,
+} from 'firebase/firestore';
+import { useFirestore, useUser } from '@/firebase';
+import { uploadImage } from '@/firebase/storage';
+import { useToast } from '@/hooks/use-toast';
+import { analyzeListingImage } from '@/app/actions';
 
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -18,7 +26,7 @@ import {
   DialogDescription,
   DialogFooter,
   DialogClose,
-} from "@/components/ui/dialog";
+} from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -26,29 +34,29 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
-import { houseTypes, locations, featureOptions } from "@/lib/constants";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Sparkles, Loader2, Wand2 } from "lucide-react";
-import { type ListingFormData } from "@/types";
+} from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Progress } from '@/components/ui/progress';
+import { houseTypes, locations, featureOptions } from '@/lib/constants';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Sparkles, Loader2, Wand2, UploadCloud } from 'lucide-react';
+import { type ListingFormData } from '@/types';
 
 const listingSchema = z.object({
-  type: z.string().min(1, "House type is required."),
-  location: z.string().min(1, "Location is required."),
-  price: z.coerce.number().min(1, "Price is required."),
-  contact: z.string().min(10, "A valid contact number is required."),
-  image: z.string().url("A valid image URL is required."),
+  type: z.string().min(1, 'House type is required.'),
+  location: z.string().min(1, 'Location is required.'),
+  price: z.coerce.number().min(1, 'Price is required.'),
+  contact: z.string().min(10, 'A valid contact number is required.'),
+  image: z.any().refine(file => file instanceof File, 'Image is required.'),
   features: z.array(z.string()).optional(),
 });
 
@@ -60,67 +68,111 @@ type AddListingModalProps = {
 export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAnalyzing, startTransition] = useTransition();
-  const [analysisResult, setAnalysisResult] = useState<{ suggestedTags: string[], suggestedImprovements: string } | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<{
+    suggestedTags: string[];
+    suggestedImprovements: string;
+  } | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
-  const { toast } = useToast();
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
-  const form = useForm<ListingFormData>({
+  const { toast } = useToast();
+  const { user } = useUser();
+  const db = useFirestore();
+
+  const form = useForm<z.infer<typeof listingSchema>>({
     resolver: zodResolver(listingSchema),
     defaultValues: {
-      type: "Bedsitter",
-      location: "Mjini",
+      type: 'Bedsitter',
+      location: 'Mjini',
       price: 5000,
-      contact: "",
-      image: "",
+      contact: '',
       features: [],
     },
   });
 
-  const imageUrl = form.watch("image");
+  const imageFile = form.watch('image');
 
   const handleAnalyzeImage = async () => {
-    if (!imageUrl) {
-      setAnalysisError("Please enter an image URL first.");
+    if (!imageFile) {
+      setAnalysisError('Please select an image file first.');
       return;
     }
     setAnalysisError(null);
     setAnalysisResult(null);
 
-    const formData = new FormData();
-    formData.append('image', imageUrl);
-
-    startTransition(async () => {
-      const result = await analyzeListingImage(formData);
-      if (result.error) {
-        setAnalysisError(result.error);
-      } else if (result.analysis) {
-        setAnalysisResult(result.analysis);
-      }
-    });
+    const reader = new FileReader();
+    reader.readAsDataURL(imageFile);
+    reader.onload = () => {
+      const dataUri = reader.result as string;
+      const formData = new FormData();
+      // We are cheating here by passing data URI to a function that expects a URL
+      // This is because our server action is set up to fetch a URL.
+      // A better approach would be to have the server action accept a data URI directly.
+      formData.append('image', dataUri);
+      
+      startTransition(async () => {
+        const result = await analyzeListingImage(formData);
+        if (result.error) {
+          setAnalysisError(result.error);
+        } else if (result.analysis) {
+          setAnalysisResult(result.analysis);
+        }
+      });
+    }
   };
 
-  const onSubmit = async (data: ListingFormData) => {
-    setIsSubmitting(true);
-    try {
-      await addDoc(collection(db, "listings"), {
-        ...data,
-        createdAt: serverTimestamp(),
-      });
+  const onSubmit = async (data: z.infer<typeof listingSchema>) => {
+    if (!user) {
       toast({
-        title: "Success!",
-        description: "Your listing has been added.",
+        variant: 'destructive',
+        title: 'Not authenticated',
+        description: 'You must be logged in to create a listing.',
       });
+      return;
+    }
+
+    setIsSubmitting(true);
+    setUploadProgress(0);
+
+    try {
+      const imageUrl = await uploadImage(
+        data.image,
+        user.uid,
+        setUploadProgress
+      );
+
+      const listingData = {
+        ...data,
+        image: imageUrl,
+        userId: user.uid,
+        createdAt: serverTimestamp(),
+      };
+
+      const docRef = await addDoc(collection(db, 'listings'), listingData);
+
+      // Add listing to user's profile
+      const userRef = doc(db, 'users', user.uid);
+      await updateDoc(userRef, {
+        listings: arrayUnion(docRef.id),
+      });
+
+      toast({
+        title: 'Success!',
+        description: 'Your listing has been added.',
+      });
+
       form.reset();
       onClose();
     } catch (error) {
-      console.error("Error adding document: ", error);
+      console.error('Error adding document: ', error);
       toast({
-        variant: "destructive",
-        title: "Uh oh! Something went wrong.",
-        description: "Failed to add listing. Please try again.",
+        variant: 'destructive',
+        title: 'Uh oh! Something went wrong.',
+        description: 'Failed to add listing. Please try again.',
       });
     } finally {
       setIsSubmitting(false);
+      setUploadProgress(null);
     }
   };
 
@@ -128,7 +180,9 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
         <DialogHeader className="pr-6">
-          <DialogTitle className="text-2xl font-bold">Add a New Rental Property</DialogTitle>
+          <DialogTitle className="text-2xl font-bold">
+            Add a New Rental Property
+          </DialogTitle>
           <DialogDescription>
             Fill in the details below to post a listing.
           </DialogDescription>
@@ -143,14 +197,23 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Type of House</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
                         <FormControl>
-                          <SelectTrigger><SelectValue placeholder="Select a house type" /></SelectTrigger>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a house type" />
+                          </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {houseTypes.filter(t => t !== 'All').map(type => (
-                            <SelectItem key={type} value={type}>{type}</SelectItem>
-                          ))}
+                          {houseTypes
+                            .filter(t => t !== 'All')
+                            .map(type => (
+                              <SelectItem key={type} value={type}>
+                                {type}
+                              </SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -163,14 +226,23 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Location / Estate</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
                         <FormControl>
-                          <SelectTrigger><SelectValue placeholder="Select a location" /></SelectTrigger>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a location" />
+                          </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {locations.filter(l => l !== 'All').map(loc => (
-                            <SelectItem key={loc} value={loc}>{loc}</SelectItem>
-                          ))}
+                          {locations
+                            .filter(l => l !== 'All')
+                            .map(loc => (
+                              <SelectItem key={loc} value={loc}>
+                                {loc}
+                              </SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -200,68 +272,106 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                   <FormItem>
                     <FormLabel>Contact Phone Number</FormLabel>
                     <FormControl>
-                      <Input type="tel" placeholder="e.g. 0712345678" {...field} />
+                      <Input
+                        type="tel"
+                        placeholder="e.g. 0712345678"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
+
               <FormField
-                  control={form.control}
-                  name="image"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Image URL</FormLabel>
-                      <div className="flex items-center gap-2">
-                         <FormControl>
-                          <Input placeholder="https://..." {...field} />
-                        </FormControl>
-                        <Button type="button" variant="outline" onClick={handleAnalyzeImage} disabled={isAnalyzing || !imageUrl}>
-                          {isAnalyzing ? <Loader2 className="animate-spin" /> : <Wand2 />}
-                          <span className="ml-2 hidden md:inline">Analyze Image</span>
-                        </Button>
-                      </div>
-                      <FormMessage />
-                       <p className="text-xs text-muted-foreground mt-1">Upload your image to a site like <a href="https://postimages.org/" target="_blank" rel="noopener noreferrer" className="text-primary underline">PostImages.org</a> and paste the direct link here.</p>
-                    </FormItem>
-                  )}
-                />
-
-                {(isAnalyzing || analysisResult || analysisError) && (
-                    <Alert variant={analysisError ? "destructive" : "default"} className="bg-muted/50">
-                        <Sparkles className="h-4 w-4" />
-                        <AlertTitle>{isAnalyzing ? "Analyzing..." : (analysisError ? "Analysis Failed" : "AI Suggestions")}</AlertTitle>
-                        <AlertDescription>
-                            {isAnalyzing && "Our AI is looking at your image. Please wait a moment."}
-                            {analysisError && analysisError}
-                            {analysisResult && (
-                                <div className="space-y-3">
-                                    <p>{analysisResult.suggestedImprovements}</p>
-                                    <p className="font-semibold">Suggested Tags:</p>
-                                    <div className="flex flex-wrap gap-2">
-                                        {analysisResult.suggestedTags.map(tag => (
-                                            <Badge 
-                                                key={tag} 
-                                                variant="secondary"
-                                                className="cursor-pointer"
-                                                onClick={() => {
-                                                    const currentFeatures = form.getValues("features") || [];
-                                                    if (!currentFeatures.includes(tag) && featureOptions.includes(tag)) {
-                                                        form.setValue("features", [...currentFeatures, tag]);
-                                                    }
-                                                }}
-                                            >
-                                                {tag}
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </AlertDescription>
-                    </Alert>
+                control={form.control}
+                name="image"
+                render={({ field: { onChange, value, ...rest } }) => (
+                  <FormItem>
+                    <FormLabel>Property Image</FormLabel>
+                     <FormControl>
+                        <div className="relative flex items-center gap-2">
+                           <label htmlFor="image-upload" className="flex-grow h-10 flex items-center justify-center rounded-md border border-input bg-background px-3 py-2 text-sm text-muted-foreground ring-offset-background cursor-pointer hover:bg-accent hover:text-accent-foreground">
+                             <UploadCloud className="mr-2" />
+                             {value?.name || 'Click to upload an image'}
+                           </label>
+                           <Input
+                              id="image-upload"
+                              type="file"
+                              className="sr-only"
+                              accept="image/*"
+                              onChange={(e) => onChange(e.target.files?.[0])}
+                              {...rest}
+                            />
+                            <Button type="button" variant="outline" onClick={handleAnalyzeImage} disabled={isAnalyzing || !imageFile}>
+                              {isAnalyzing ? <Loader2 className="animate-spin" /> : <Wand2 />}
+                              <span className="ml-2 hidden md:inline">Analyze Image</span>
+                            </Button>
+                        </div>
+                      </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
+              />
 
+              {uploadProgress !== null && (
+                <div className="space-y-2">
+                  <Label>Uploading Image...</Label>
+                  <Progress value={uploadProgress} />
+                </div>
+              )}
+
+
+              {(isAnalyzing || analysisResult || analysisError) && (
+                <Alert
+                  variant={analysisError ? 'destructive' : 'default'}
+                  className="bg-muted/50"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  <AlertTitle>
+                    {isAnalyzing
+                      ? 'Analyzing...'
+                      : analysisError
+                      ? 'Analysis Failed'
+                      : 'AI Suggestions'}
+                  </AlertTitle>
+                  <AlertDescription>
+                    {isAnalyzing &&
+                      'Our AI is looking at your image. Please wait a moment.'}
+                    {analysisError && analysisError}
+                    {analysisResult && (
+                      <div className="space-y-3">
+                        <p>{analysisResult.suggestedImprovements}</p>
+                        <p className="font-semibold">Suggested Tags:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {analysisResult.suggestedTags.map(tag => (
+                            <Badge
+                              key={tag}
+                              variant="secondary"
+                              className="cursor-pointer"
+                              onClick={() => {
+                                const currentFeatures =
+                                  form.getValues('features') || [];
+                                if (
+                                  !currentFeatures.includes(tag) &&
+                                  featureOptions.includes(tag)
+                                ) {
+                                  form.setValue('features', [
+                                    ...currentFeatures,
+                                    tag,
+                                  ]);
+                                }
+                              }}
+                            >
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </AlertDescription>
+                </Alert>
+              )}
 
               <FormField
                 control={form.control}
@@ -270,25 +380,31 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                   <FormItem>
                     <FormLabel>Features (Select all that apply)</FormLabel>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      {featureOptions.map((item) => (
+                      {featureOptions.map(item => (
                         <FormField
                           key={item}
                           control={form.control}
                           name="features"
                           render={({ field }) => {
                             return (
-                              <FormItem key={item} className="flex flex-row items-start space-x-3 space-y-0">
+                              <FormItem
+                                key={item}
+                                className="flex flex-row items-start space-x-3 space-y-0"
+                              >
                                 <FormControl>
                                   <Checkbox
                                     checked={field.value?.includes(item)}
-                                    onCheckedChange={(checked) => {
+                                    onCheckedChange={checked => {
                                       return checked
-                                        ? field.onChange([...(field.value || []), item])
+                                        ? field.onChange([
+                                            ...(field.value || []),
+                                            item,
+                                          ])
                                         : field.onChange(
                                             (field.value || []).filter(
-                                              (value) => value !== item
+                                              value => value !== item
                                             )
-                                          )
+                                          );
                                     }}
                                   />
                                 </FormControl>
@@ -296,7 +412,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                                   {item}
                                 </FormLabel>
                               </FormItem>
-                            )
+                            );
                           }}
                         />
                       ))}
@@ -317,7 +433,9 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Submitting...
                     </>
-                  ) : 'Submit Listing'}
+                  ) : (
+                    'Submit Listing'
+                  )}
                 </Button>
               </DialogFooter>
             </form>

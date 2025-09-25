@@ -2,6 +2,7 @@ import { type Timestamp } from 'firebase/firestore';
 
 export type Listing = {
   id: string;
+  userId: string;
   type: string;
   location: string;
   price: number;
@@ -16,6 +17,6 @@ export type ListingFormData = {
   location: string;
   price: number;
   contact: string;
-  image: string;
+  image: File;
   features: string[];
 }

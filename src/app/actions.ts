@@ -1,11 +1,11 @@
-"use server";
+'use server';
 
 import { analyzeImageForListing } from '@/ai/flows/image-analysis-for-listing';
 import { z } from 'zod';
 import { type ImageAnalysisForListingOutput } from '@/ai/flows/image-analysis-for-listing';
 
 const analyzeImageSchema = z.object({
-  imageUrl: z.string().url({ message: "Please provide a valid URL." }),
+  imageUrl: z.string(), // Now expecting a data URI
 });
 
 export type AnalysisFormState = {
@@ -15,6 +15,10 @@ export type AnalysisFormState = {
 };
 
 async function dataUrlFromUrl(url: string): Promise<string> {
+    // If it's already a data URI, just return it.
+  if (url.startsWith('data:')) {
+    return url;
+  }
   try {
     const response = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }); // Some image hosts block default fetch user-agent
     if (!response.ok) {
@@ -45,7 +49,7 @@ export async function analyzeListingImage(
 
   if (!validatedFields.success) {
     return {
-      error: validatedFields.error.flatten().fieldErrors.imageUrl?.[0] || 'Invalid image URL provided.',
+      error: validatedFields.error.flatten().fieldErrors.imageUrl?.[0] || 'Invalid image data provided.',
     };
   }
   
