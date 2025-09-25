@@ -6,9 +6,10 @@ import {
   uploadBytesResumable,
   getDownloadURL,
 } from 'firebase/storage';
-import { app } from '@/lib/firebase'; // Assuming you have this from your initial setup
+import { initializeFirebase } from '@/firebase';
 
-const storage = getStorage(app);
+const { firebaseApp } = initializeFirebase();
+const storage = getStorage(firebaseApp);
 
 type UploadProgressCallback = (progress: number) => void;
 
