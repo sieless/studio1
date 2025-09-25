@@ -64,13 +64,16 @@ export function ListingsView() {
   const [filters, setFilters] = useState({
     location: 'All',
     type: 'All',
-    maxPrice: 30000,
+    maxPrice: 50000,
   });
 
   const db = useFirestore();
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
+
+  // This is a placeholder for a real subscription check
+  const isSubscribed = useMemo(() => !!user, [user]);
 
   useEffect(() => {
     setLoading(true);
@@ -130,7 +133,7 @@ export function ListingsView() {
         {loading ? (
           <LoadingSkeletons />
         ) : (
-          <ListingGrid listings={filteredListings} />
+          <ListingGrid listings={filteredListings} isSubscribed={isSubscribed} />
         )}
       </main>
       <Footer />

@@ -10,13 +10,14 @@ import { type Listing } from "@/types";
 
 type ListingCardProps = {
   listing: Listing;
+  isSubscribed: boolean;
 };
 
-export function ListingCard({ listing }: ListingCardProps) {
+export function ListingCard({ listing, isSubscribed }: ListingCardProps) {
   const [showContact, setShowContact] = useState(false);
   const [imgSrc, setImgSrc] = useState(listing.image);
 
-  const fallbackImg = `https://picsum.photos/seed/${listing.id}/600/400`;
+  const fallbackImg = `https://placehold.co/600x400/EEE/31343C?text=${listing.type}`;
 
   return (
     <Card className="overflow-hidden group transform hover:-translate-y-1 transition-all duration-300 hover:shadow-xl flex flex-col">
@@ -30,9 +31,11 @@ export function ListingCard({ listing }: ListingCardProps) {
           onError={() => setImgSrc(fallbackImg)}
           data-ai-hint="house exterior"
         />
-        <div className="absolute top-0 right-0 bg-primary text-primary-foreground py-1 px-3 m-3 rounded-full text-sm font-semibold">
-          Available
-        </div>
+        {isSubscribed && (
+          <div className="absolute top-0 right-0 bg-primary text-primary-foreground py-1 px-3 m-3 rounded-full text-sm font-semibold">
+            Available
+          </div>
+        )}
       </div>
       <CardContent className="p-5 flex flex-col flex-grow">
         <div className="flex items-center justify-between mb-3 text-sm text-muted-foreground">
@@ -40,7 +43,7 @@ export function ListingCard({ listing }: ListingCardProps) {
             <MapPin className="w-4 h-4" /> {listing.location}
           </p>
           <p className="font-semibold flex items-center gap-2">
-            {listing.type.toLowerCase().includes('bedroom') ? <Bed className="w-4 h-4" /> : <Building className="w-4 h-4" />} {listing.type}
+            {listing.type.toLowerCase().includes('bedroom') || listing.type.toLowerCase() === 'house' ? <Bed className="w-4 h-4" /> : <Building className="w-4 h-4" />} {listing.type}
           </p>
         </div>
         <h3 className="text-2xl font-bold text-foreground leading-tight">

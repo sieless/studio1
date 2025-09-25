@@ -141,7 +141,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
       // 1. Create listing with a placeholder image
       const listingData = {
         ...data,
-        image: `https://picsum.photos/seed/${Date.now()}/600/400`, // Placeholder
+        image: 'https://placehold.co/600x400/EEE/31343C', // Placeholder
         userId: user.uid,
         createdAt: serverTimestamp(),
       };

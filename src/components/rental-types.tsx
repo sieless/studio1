@@ -25,7 +25,7 @@ export function RentalTypes({ onTypeSelect, selectedType }: RentalTypesProps) {
             }`}
             onClick={() => onTypeSelect(type)}
           >
-            {type.toLowerCase().includes('bedroom') || type.toLowerCase().includes('bedsitter') ? (
+            {type.toLowerCase().includes('bedroom') || type.toLowerCase().includes('bedsitter') || type.toLowerCase() === 'house' ? (
               <Bed className="w-8 h-8 mb-2" />
             ) : (
               <Building className="w-8 h-8 mb-2" />

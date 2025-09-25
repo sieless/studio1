@@ -3,9 +3,10 @@ import { ListingCard } from "./listing-card";
 
 type ListingGridProps = {
   listings: Listing[];
+  isSubscribed: boolean;
 };
 
-export function ListingGrid({ listings }: ListingGridProps) {
+export function ListingGrid({ listings, isSubscribed }: ListingGridProps) {
   return (
     <div>
       <h2 className="text-2xl font-bold text-foreground mb-6">
@@ -14,7 +15,7 @@ export function ListingGrid({ listings }: ListingGridProps) {
       {listings.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
           {listings.map((listing) => (
-            <ListingCard key={listing.id} listing={listing} />
+            <ListingCard key={listing.id} listing={listing} isSubscribed={isSubscribed} />
           ))}
         </div>
       ) : (
