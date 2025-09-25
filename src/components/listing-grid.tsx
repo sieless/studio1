@@ -2,17 +2,22 @@
 
 import { type Listing } from "@/types";
 import { ListingCard } from "./listing-card";
+import { cn } from "@/lib/utils";
 
 type ListingGridProps = {
   listings: Listing[];
   isSubscribed: boolean;
+  columns?: 3 | 4;
 };
 
-export function ListingGrid({ listings, isSubscribed }: ListingGridProps) {
+export function ListingGrid({ listings, isSubscribed, columns = 3 }: ListingGridProps) {
   return (
     <div>
       {listings.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className={cn(
+            "grid grid-cols-1 sm:grid-cols-2 gap-8",
+            columns === 3 ? "lg:grid-cols-3" : "lg:grid-cols-3 xl:grid-cols-4"
+        )}>
           {listings.map((listing) => (
             <ListingCard key={listing.id} listing={listing} isSubscribed={isSubscribed} />
           ))}

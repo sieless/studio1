@@ -23,8 +23,8 @@ import { Button } from '@/components/ui/button';
 
 function LoadingSkeletons() {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-      {Array.from({ length: 9 }).map((_, i) => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+      {Array.from({ length: 12 }).map((_, i) => (
         <div
           key={i}
           className="bg-card rounded-xl shadow-lg overflow-hidden flex flex-col p-5 space-y-4"
@@ -141,6 +141,7 @@ export default function AllPropertiesPage() {
                 <ListingGrid
                   listings={filteredListings}
                   isSubscribed={isSubscribed}
+                  columns={4}
                 />
               </div>
             </div>
