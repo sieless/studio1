@@ -152,7 +152,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
     setIsSubmitting(true);
 
     try {
-      const { images, ...restOfData } = data;
+      const { images: imageFiles, ...restOfData } = data;
       // 1. Create listing with placeholder images
       const listingData = {
         ...restOfData,
@@ -164,22 +164,23 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
       const docRef = await addDoc(collection(db, 'listings'), listingData);
 
       // 2. Start image uploads in the background (non-blocking)
-      const uploadPromises = data.images.map(file =>
+      const uploadPromises = imageFiles.map(file =>
         uploadImage(file, user.uid, progress => {
           console.log(`Upload is ${progress}% done`);
         })
       );
 
+      // We don't block the UI, but we handle the completion of uploads
       Promise.all(uploadPromises)
         .then(async imageUrls => {
           // 3. Once all uploads are complete, update the document with the real URLs
-          updateDocumentNonBlocking(doc(db, 'listings', docRef.id), {
+          await updateDoc(doc(db, 'listings', docRef.id), {
             images: imageUrls,
           });
 
           // Add listing to user's profile
           const userRef = doc(db, 'users', user.uid);
-          updateDocumentNonBlocking(userRef, {
+          await updateDoc(userRef, {
             listings: arrayUnion(docRef.id),
           });
         })
@@ -499,5 +500,3 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
     </Dialog>
   );
 }
-
-    
