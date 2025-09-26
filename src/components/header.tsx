@@ -12,9 +12,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuGroup
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Home, LogOut, PlusCircle, User as UserIcon, LayoutGrid } from 'lucide-react';
+import { Home, LogOut, PlusCircle, User as UserIcon, LayoutGrid, Menu, Info, Mail } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 
 type HeaderProps = {
@@ -60,6 +61,35 @@ export function Header({ onPostClick }: HeaderProps) {
             Post a Listing
           </Button>
 
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Menu className="h-5 w-5" />
+                <span className="sr-only">Open menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link href="/about">
+                  <Info className="mr-2 h-4 w-4" />
+                  <span>About Us</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/contact">
+                  <Mail className="mr-2 h-4 w-4" />
+                  <span>Contact</span>
+                </Link>
+              </DropdownMenuItem>
+               <DropdownMenuItem asChild>
+                <Link href="/all-properties">
+                  <LayoutGrid className="mr-2 h-4 w-4" />
+                  <span>All Properties</span>
+                </Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {isUserLoading ? (
              <Skeleton className="h-10 w-10 rounded-full" />
           ) : user ? (
@@ -97,6 +127,7 @@ export function Header({ onPostClick }: HeaderProps) {
                   <PlusCircle className="mr-2 h-4 w-4" />
                   <span>Post Listing</span>
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut}>
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>

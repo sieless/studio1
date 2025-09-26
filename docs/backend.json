@@ -59,6 +59,10 @@
           "type": "number",
           "description": "Rent per month in Ksh."
         },
+        "deposit": {
+          "type": "number",
+          "description": "Security deposit amount in Ksh. (Optional)"
+        },
         "contact": {
           "type": "string",
           "description": "Contact phone number for the landlord."

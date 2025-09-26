@@ -27,6 +27,7 @@ import {
   Building,
   ArrowLeft,
   School,
+  Wallet,
 } from 'lucide-react';
 
 function ListingDetailSkeleton() {
@@ -106,7 +107,6 @@ export default function ListingDetailPage() {
           setListing({ id: docSnap.id, ...docSnap.data() } as Listing);
         } else {
           console.log('No such document!');
-          // Optionally, redirect to a 404 page
         }
       } catch (error) {
         console.error('Error fetching listing:', error);
@@ -188,13 +188,22 @@ export default function ListingDetailPage() {
           </Carousel>
 
           <CardContent className="p-6 md:p-8">
-            <div className="flex flex-col md:flex-row justify-between md:items-center mb-4">
-              <h1 className="text-4xl font-extrabold text-foreground mb-2 md:mb-0">
-                Ksh {listing.price?.toLocaleString() || '0'}
-                <span className="text-xl font-medium text-muted-foreground">
-                  /month
-                </span>
-              </h1>
+            <div className="flex flex-col md:flex-row justify-between md:items-start mb-4 gap-4">
+              <div>
+                 <h1 className="text-4xl font-extrabold text-foreground mb-1">
+                    Ksh {listing.price?.toLocaleString() || '0'}
+                    <span className="text-xl font-medium text-muted-foreground">
+                      /month
+                    </span>
+                  </h1>
+                  {listing.deposit && (
+                    <div className="flex items-center text-muted-foreground">
+                        <Wallet className="w-4 h-4 mr-2" />
+                        <span>Deposit: Ksh {listing.deposit.toLocaleString()}</span>
+                    </div>
+                  )}
+              </div>
+             
               <Badge variant="secondary" className="text-base py-1 px-3 self-start md:self-center">
                 Available
               </Badge>

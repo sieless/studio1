@@ -6,6 +6,7 @@ export type Listing = {
   type: string;
   location: string;
   price: number;
+  deposit?: number;
   features: string[];
   images: string[];
   contact: string;
@@ -16,6 +17,7 @@ export type ListingFormData = {
   type: string;
   location: string;
   price: number;
+  deposit?: number;
   contact: string;
   images: File[];
   features: string[];

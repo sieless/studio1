@@ -55,10 +55,11 @@ const listingSchema = z.object({
   type: z.string().min(1, 'House type is required.'),
   location: z.string().min(1, 'Location is required.'),
   price: z.coerce.number().min(1, 'Price is required.'),
+  deposit: z.coerce.number().optional(),
   contact: z.string().min(10, 'A valid contact number is required.'),
   images: z
-    .array(z.any())
-    .min(1, 'At least one image is required.'),
+    .any()
+    .refine(files => files?.length >= 1, 'At least one image is required.'),
   features: z.array(z.string()).optional(),
 });
 
@@ -103,7 +104,6 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
       const files = Array.from(event.target.files);
-      // Filter out files that might already be in the list by name
       const newFiles = files.filter(
         file => !imageFiles.some(existingFile => existingFile.name === file.name)
       );
@@ -153,32 +153,28 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
 
     try {
       const { images: imageFiles, ...restOfData } = data;
-      // 1. Create listing with placeholder images
       const listingData = {
         ...restOfData,
-        images: [], // Start with an empty array
+        images: [], 
         userId: user.uid,
         createdAt: serverTimestamp(),
       };
 
       const docRef = await addDoc(collection(db, 'listings'), listingData);
 
-      // 2. Start image uploads in the background (non-blocking)
-      const uploadPromises = imageFiles.map(file =>
+      const uploadPromises = imageFiles.map((file: File) =>
         uploadImage(file, user.uid, progress => {
           console.log(`Upload is ${progress}% done`);
         })
       );
 
-      // We don't block the UI, but we handle the completion of uploads
       Promise.all(uploadPromises)
         .then(async imageUrls => {
-          // 3. Once all uploads are complete, update the document with the real URLs
-          await updateDoc(doc(db, 'listings', docRef.id), {
+          const listingDocRef = doc(db, 'listings', docRef.id);
+          await updateDoc(listingDocRef, {
             images: imageUrls,
           });
 
-          // Add listing to user's profile
           const userRef = doc(db, 'users', user.uid);
           await updateDoc(userRef, {
             listings: arrayUnion(docRef.id),
@@ -289,19 +285,35 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                 />
               </div>
 
-              <FormField
-                control={form.control}
-                name="price"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Rent per Month (Ksh)</FormLabel>
-                    <FormControl>
-                      <Input type="number" placeholder="e.g. 8500" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="price"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Rent per Month (Ksh)</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="e.g. 8500" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="deposit"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Rent Deposit (Ksh, Optional)</FormLabel>
+                      <FormControl>
+                        <Input type="number" placeholder="e.g. 8500" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
 
               <FormField
                 control={form.control}
