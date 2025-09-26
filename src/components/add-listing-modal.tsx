@@ -57,7 +57,7 @@ const listingSchema = z.object({
   price: z.coerce.number().min(1, 'Price is required.'),
   contact: z.string().min(10, 'A valid contact number is required.'),
   images: z
-    .array(z.instanceof(File))
+    .array(z.any())
     .min(1, 'At least one image is required.'),
   features: z.array(z.string()).optional(),
 });
@@ -152,9 +152,10 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
     setIsSubmitting(true);
 
     try {
+      const { images, ...restOfData } = data;
       // 1. Create listing with placeholder images
       const listingData = {
-        ...data,
+        ...restOfData,
         images: [], // Start with an empty array
         userId: user.uid,
         createdAt: serverTimestamp(),
@@ -498,3 +499,5 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
     </Dialog>
   );
 }
+
+    
