@@ -73,7 +73,7 @@ export default function SignupPage() {
               <Home className="h-6 w-6 text-primary" />
             </div>
             <h1 className="text-2xl font-bold text-foreground font-headline">
-              Machakos Rentals
+              Mavazi Hub
             </h1>
           </div>
           <CardTitle className="text-2xl text-center">Sign Up</CardTitle>

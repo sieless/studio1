@@ -168,7 +168,7 @@ export function ListingsView() {
                   {hasMore && (
                     <div className="text-center mt-10">
                       <Button size="lg" asChild>
-                        <Link href="/all-properties">View All Properties</Link>
+                        <Link href="/all-properties">View All</Link>
                       </Button>
                     </div>
                   )}
