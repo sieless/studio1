@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -18,6 +19,24 @@ type ListingCardProps = {
   isSubscribed: boolean;
 };
 
+function ImageWithFallback({ src, fallback, alt, ...props }: any) {
+  const [error, setError] = useState(false);
+
+  const handleError = () => {
+    setError(true);
+  };
+
+  return (
+    <Image
+      alt={alt}
+      src={error ? fallback : src}
+      onError={handleError}
+      {...props}
+    />
+  );
+}
+
+
 export function ListingCard({ listing, isSubscribed }: ListingCardProps) {
   const [showContact, setShowContact] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -30,10 +49,9 @@ export function ListingCard({ listing, isSubscribed }: ListingCardProps) {
 
   const canViewContact = userProfile?.canViewContacts || false;
 
-  const initialImgSrc = listing.images && listing.images.length > 0 ? listing.images[0] : `https://placehold.co/600x400/EEE/31343C?text=${listing.type}`;
-  const [imgSrc, setImgSrc] = useState(initialImgSrc);
-
-  const fallbackImg = `https://placehold.co/600x400/EEE/31343C?text=${listing.type}`;
+  const initialImgSrc = listing.images && listing.images.length > 0 ? listing.images[0] : `https://placehold.co/600x400/EEE/31343C?text=${listing.type.replace(/\s/g, '+')}`;
+  
+  const fallbackImg = `https://placehold.co/600x400/EEE/31343C?text=${listing.type.replace(/\s/g, '+')}`;
 
   const getPropertyIcon = (type: string) => {
     const lowerType = type.toLowerCase();
@@ -80,13 +98,13 @@ export function ListingCard({ listing, isSubscribed }: ListingCardProps) {
     <Card className="overflow-hidden group transform hover:-translate-y-1 transition-all duration-300 hover:shadow-xl flex flex-col">
       <Link href={`/listings/${listing.id}`} className="flex flex-col flex-grow">
         <div className="relative">
-          <Image
-            src={imgSrc}
+          <ImageWithFallback
+            src={initialImgSrc}
+            fallback={fallbackImg}
             alt={listing.type}
             width={600}
             height={400}
             className="w-full h-56 object-cover"
-            onError={() => setImgSrc(fallbackImg)}
             data-ai-hint="house exterior"
           />
           {isSubscribed && (
