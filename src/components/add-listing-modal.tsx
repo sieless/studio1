@@ -174,9 +174,9 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
       if (listingPayload.deposit === '' || listingPayload.deposit === undefined || isNaN(listingPayload.deposit)) {
         delete listingPayload.deposit;
       } else {
-        listingPayload.price = Number(listingPayload.price);
         listingPayload.deposit = Number(listingPayload.deposit);
       }
+      listingPayload.price = Number(listingPayload.price);
 
 
       // 1. Create the document in Firestore first to get a docRef

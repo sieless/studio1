@@ -55,7 +55,6 @@ export function Header({ onPostClick }: HeaderProps) {
           <Button
             onClick={onPostClick}
             className="font-semibold shadow-md hover:bg-primary/90 transition-all duration-300 transform hover:-translate-y-0.5 hidden sm:flex"
-            disabled={!user}
           >
             <PlusCircle className="mr-2 h-5 w-5" />
             Post a Listing

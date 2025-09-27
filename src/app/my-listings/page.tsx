@@ -161,7 +161,7 @@ export default function MyListingsPage() {
 
   const getPropertyIcon = (type: string) => {
     const lowerType = type.toLowerCase();
-    if (lowerType.includes('bedroom') || lowerType === 'house') {
+    if (lowerType.includes('bedroom') || lowerType.includes('bedsitter') || lowerType === 'house' || lowerType === 'single room') {
       return <Bed className="w-4 h-4" />;
     }
     if (lowerType === 'hostel') {
@@ -266,5 +266,3 @@ export default function MyListingsPage() {
     </>
   );
 }
-
-    

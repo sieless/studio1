@@ -11,7 +11,7 @@ type RentalTypesProps = {
 export function RentalTypes({ onTypeSelect, selectedType }: RentalTypesProps) {
   const getPropertyIcon = (type: string) => {
     const lowerType = type.toLowerCase();
-    if (lowerType.includes('bedroom') || lowerType.includes('bedsitter') || lowerType === 'house') {
+    if (lowerType.includes('bedroom') || lowerType.includes('bedsitter') || lowerType === 'house' || lowerType === 'single room') {
       return <Bed className="w-8 h-8 mb-2" />;
     }
     if (lowerType === 'hostel') {
