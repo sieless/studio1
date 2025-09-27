@@ -12,7 +12,7 @@ import {
   updateDoc,
   arrayUnion,
 } from 'firebase/firestore';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore, useUser, useFirebaseApp } from '@/firebase';
 import { uploadImage } from '@/firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { analyzeListingImage } from '@/app/actions';
@@ -50,6 +50,10 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles, Loader2, Wand2, UploadCloud, X } from 'lucide-react';
 import { PaymentModal } from './payment-modal';
+import { RadioGroup, RadioGroupItem } from './ui/radio-group';
+import { getSubscriptionFee } from '@/lib/utils';
+import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+
 
 const listingSchema = z.object({
   type: z.string().min(1, 'House type is required.'),
@@ -61,6 +65,7 @@ const listingSchema = z.object({
     .any()
     .refine(files => files?.length >= 1, 'At least one image is required.'),
   features: z.array(z.string()).optional(),
+  status: z.enum(['Vacant', 'Occupied'], { required_error: 'You must select a status.'}),
 });
 
 type AddListingModalProps = {
@@ -80,7 +85,6 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [analyzedImageIndex, setAnalyzedImageIndex] = useState<number | null>(null);
 
-  // Payment state
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [listingDataForPayment, setListingDataForPayment] =
     useState<ListingData | null>(null);
@@ -88,6 +92,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
   const { toast } = useToast();
   const { user } = useUser();
   const db = useFirestore();
+  const firebaseApp = useFirebaseApp();
 
   const form = useForm<ListingData>({
     resolver: zodResolver(listingSchema),
@@ -98,6 +103,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
       contact: '',
       features: [],
       images: [],
+      status: 'Occupied',
     },
   });
 
@@ -107,23 +113,6 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
   });
 
   const imageFiles = form.watch('images');
-
-  const getSubscriptionFee = (type: string) => {
-    switch (type) {
-      case 'Single Room':
-        return 500;
-      case '1 Bedroom':
-      case 'Double Room': // Assuming 'Double Room' is a type we might add
-        return 1000;
-      case '2 Bedroom':
-        return 2000;
-      case '3 Bedroom':
-      case 'House':
-        return 3000;
-      default:
-        return 500; // Default for Bedsitter and others
-    }
-  };
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
@@ -163,59 +152,52 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
     };
   };
 
-  const onSubmit = async (data: ListingData) => {
-    if (!user) {
-      toast({
-        variant: 'destructive',
-        title: 'Not authenticated',
-        description: 'You must be logged in to create a listing.',
-      });
-      return;
-    }
-    setListingDataForPayment(data);
-    setIsPaymentModalOpen(true);
-  };
-
-  const handlePaymentSuccess = async () => {
-    if (!listingDataForPayment || !user) return;
+  const processListingCreation = async (data: ListingData, requiresPayment: boolean) => {
+    if (!user) return; // Should not happen if button is disabled
 
     setIsSubmitting(true);
-    setIsPaymentModalOpen(false);
 
     try {
-      const { images: imageFiles, ...restOfData } = listingDataForPayment;
+      const { images: imageFiles, ...restOfData } = data;
       const listingDocData = {
         ...restOfData,
-        images: [],
+        images: [], // Images will be added after upload
         userId: user.uid,
         createdAt: serverTimestamp(),
-        isPaid: true, // Mark as paid
+        ...(requiresPayment && { lastPaymentAt: serverTimestamp() })
       };
 
-      const docRef = await addDoc(collection(db, 'listings'), listingDocData);
+      // 1. Create the document in Firestore first to get a docRef
+      const docRef = await addDoc(collection(db, 'listings'), {});
 
+      // 2. Upload images in the background (non-blocking)
       const uploadPromises = imageFiles.map((file: File) =>
-        uploadImage(file, user.uid, progress => {
-          console.log(`Upload is ${progress}% done`);
+        uploadImage(file, user.uid, docRef.id, progress => {
+          // You can use this callback to update UI with upload progress
+          console.log(`Image ${file.name} upload is ${progress}% done`);
         })
       );
 
-      Promise.all(uploadPromises)
-        .then(async imageUrls => {
-          const listingDocRef = doc(db, 'listings', docRef.id);
-          await updateDoc(listingDocRef, { images: imageUrls });
-        })
-        .catch(error => {
-          console.error('Image uploads failed:', error);
-        });
+      // We get the URLs and update the document, also non-blockingly.
+      Promise.all(uploadPromises).then(imageUrls => {
+        updateDocumentNonBlocking(doc(db, 'listings', docRef.id), { images: imageUrls });
+      }).catch(error => {
+        console.error("One or more image uploads failed:", error);
+        // Optionally, update the listing to indicate an image upload issue
+      });
+      
+      // 3. Update the created document with the actual data (non-blocking)
+      updateDocumentNonBlocking(doc(db, 'listings', docRef.id), listingDocData);
 
+      // 4. Update the user's listings array (non-blocking)
       const userRef = doc(db, 'users', user.uid);
-      await updateDoc(userRef, { listings: arrayUnion(docRef.id) });
+      updateDocumentNonBlocking(userRef, { listings: arrayUnion(docRef.id) });
+
 
       toast({
         title: 'Success!',
         description:
-          'Your listing is paid and being created. Images will appear shortly.',
+          'Your listing is being created. Images will appear shortly.',
       });
 
       form.reset();
@@ -230,8 +212,35 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
     } finally {
       setIsSubmitting(false);
       setListingDataForPayment(null);
+      if (isPaymentModalOpen) setIsPaymentModalOpen(false);
     }
   };
+
+
+  const onSubmit = async (data: ListingData) => {
+    if (!user) {
+      toast({
+        variant: 'destructive',
+        title: 'Not authenticated',
+        description: 'You must be logged in to create a listing.',
+      });
+      return;
+    }
+    if (data.status === 'Vacant') {
+        setListingDataForPayment(data);
+        setIsPaymentModalOpen(true);
+    } else {
+        await processListingCreation(data, false);
+    }
+  };
+
+  const handlePaymentSuccess = async () => {
+    if (!listingDataForPayment) return;
+    await processListingCreation(listingDataForPayment, true);
+  };
+
+  const selectedType = form.watch('type');
+  const selectedStatus = form.watch('status');
 
   return (
     <>
@@ -242,8 +251,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
               Add a New Rental Property
             </DialogTitle>
             <DialogDescription>
-              Fill in the details below to post a listing. A subscription fee is
-              required.
+              Fill in the details below to post your property. Declaring it "Vacant" requires a subscription.
             </DialogDescription>
           </DialogHeader>
           <div className="flex-grow overflow-y-auto pr-6 pl-6 -mr-6">
@@ -312,6 +320,41 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                     )}
                   />
                 </div>
+
+                 <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem className="space-y-3">
+                      <FormLabel>Current Status</FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          className="flex items-center space-x-4"
+                        >
+                          <FormItem className="flex items-center space-x-3 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="Occupied" />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              Occupied (Free to list)
+                            </FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-3 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="Vacant" />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              Vacant (Requires Payment)
+                            </FormLabel>
+                          </FormItem>
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
@@ -417,7 +460,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                     >
                       <UploadCloud className="h-8 w-8" />
                       <span className="mt-2 text-sm text-center">
-                        Add more photos
+                        Add photos
                       </span>
                     </label>
                     <Input
@@ -431,7 +474,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                   </div>
                   <FormMessage>
                     {form.formState.errors.images &&
-                      form.formState.errors.images.message}
+                      (form.formState.errors.images.message as string)}
                   </FormMessage>
                 </FormItem>
 
@@ -543,9 +586,9 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                   <Button type="submit" disabled={isSubmitting}>
                     {isSubmitting ? (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
+                    ) : selectedStatus === 'Vacant' ? (
                       'Proceed to Payment'
-                    )}
+                    ) : 'Post Listing for Free'}
                   </Button>
                 </DialogFooter>
               </form>
@@ -559,8 +602,8 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
           onClose={() => setIsPaymentModalOpen(false)}
           onPaymentSuccess={handlePaymentSuccess}
           amount={getSubscriptionFee(listingDataForPayment.type)}
-          description={`1-year subscription for listing a ${listingDataForPayment.type}.`}
-          title="Listing Subscription Fee"
+          description={`1-year subscription for declaring a ${listingDataForPayment.type} as vacant.`}
+          title="Declare Property Vacant"
         />
       )}
     </>

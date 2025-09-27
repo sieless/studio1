@@ -1,3 +1,4 @@
+'use server';
 import { type Timestamp } from 'firebase/firestore';
 
 export type Listing = {
@@ -11,7 +12,8 @@ export type Listing = {
   images: string[];
   contact: string;
   createdAt: Timestamp;
-  isPaid: boolean; // Landlord has paid subscription for this listing
+  status: 'Vacant' | 'Occupied';
+  lastPaymentAt?: Timestamp;
 };
 
 export type ListingFormData = {
@@ -22,6 +24,7 @@ export type ListingFormData = {
   contact: string;
   images: File[];
   features: string[];
+  status: 'Vacant' | 'Occupied';
 }
 
 export type UserProfile = {

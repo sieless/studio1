@@ -31,6 +31,8 @@ import {
 } from 'lucide-react';
 import { PaymentModal } from '@/components/payment-modal';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+
 
 function ListingDetailSkeleton() {
   return (
@@ -241,8 +243,11 @@ export default function ListingDetailPage() {
                   )}
               </div>
              
-              <Badge variant="secondary" className="text-base py-1 px-3 self-start md:self-center">
-                Available
+               <Badge className={cn(
+                  "text-base py-1 px-3 self-start md:self-center",
+                  listing.status === 'Vacant' ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
+                )}>
+                {listing.status}
               </Badge>
             </div>
             <div className="flex items-center gap-6 text-sm text-muted-foreground mb-6 border-b pb-6">
