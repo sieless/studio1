@@ -87,38 +87,19 @@ function ImageWithFallback({ src, fallback, alt, ...props }: any) {
 
 
 export default function ListingDetailPage() {
-  const [listing, setListing] = useState<Listing | null>(null);
-  const [loading, setLoading] = useState(true);
   const [showContact, setShowContact] = useState(false);
-
+  
   const db = useFirestore();
   const params = useParams();
   const router = useRouter();
   const { id } = params;
-  
-  useEffect(() => {
-    if (!id || typeof id !== 'string') return;
 
-    const fetchListing = async () => {
-      setLoading(true);
-      try {
-        const docRef = doc(db, 'listings', id);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          setListing({ id: docSnap.id, ...docSnap.data() } as Listing);
-        } else {
-          console.log('No such document!');
-        }
-      } catch (error) {
-        console.error('Error fetching listing:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchListing();
+  const listingRef = useMemoFirebase(() => {
+    if (typeof id !== 'string') return null;
+    return doc(db, 'listings', id);
   }, [id, db]);
+
+  const { data: listing, isLoading: loading, error: listingError } = useDoc<Listing>(listingRef);
 
   const handleViewContact = () => {
     setShowContact(true);
@@ -139,10 +120,10 @@ export default function ListingDetailPage() {
     return <ListingDetailSkeleton />;
   }
 
-  if (!listing) {
+  if (!listing || listingError) {
     return (
       <div className="text-center py-20">
-        <p className="text-lg text-muted-foreground">Listing not found.</p>
+        <p className="text-lg text-muted-foreground">Listing not found or there was an error loading it.</p>
         <Button asChild variant="link" className="mt-4">
           <Link href="/">Go back to listings</Link>
         </Button>
@@ -278,5 +259,3 @@ export default function ListingDetailPage() {
     </div>
   );
 }
-
-    
