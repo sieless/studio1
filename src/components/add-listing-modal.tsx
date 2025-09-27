@@ -274,7 +274,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                       <FormItem>
                         <FormLabel>Location / Estate</FormLabel>
                         <Select
-                          onValueChange={field.onChange}
+                          onValuechange={field.onChange}
                           defaultValue={field.value}
                         >
                           <FormControl>
@@ -411,7 +411,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                       className="sr-only"
                       accept="image/*"
                       multiple
-                      onChange={handleFilechange}
+                      onChange={handleFileChange}
                     />
                   </div>
                   <FormMessage>
