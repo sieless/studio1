@@ -194,27 +194,25 @@ export default function MyListingsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {listings.map(listing => (
               <Card key={listing.id} className="overflow-hidden flex flex-col">
-                <div className="relative">
-                  <Link href={`/listings/${listing.id}`} className="block">
-                    <div className="relative h-56 w-full">
-                      <ImageWithFallback
-                        src={(listing.images && listing.images.length > 0) ? listing.images[0] : `https://placehold.co/600x400/EEE/31343C?text=${listing.type.replace(/\s/g, '+')}`}
-                        fallback={`https://placehold.co/600x400/EEE/31343C?text=${listing.type.replace(/\s/g, '+')}`}
-                        alt={listing.type}
-                        fill
-                        className="object-cover"
-                      />
-                       <Badge
-                        className={cn(
-                          "absolute top-3 right-3 text-sm",
-                          listing.status === 'Vacant' ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'
-                        )}
-                      >
-                        {listing.status}
-                      </Badge>
-                    </div>
-                  </Link>
-                </div>
+                <Link href={`/listings/${listing.id}`} className="block">
+                  <div className="relative h-56 w-full">
+                    <ImageWithFallback
+                      src={(listing.images && listing.images.length > 0) ? listing.images[0] : `https://placehold.co/600x400/EEE/31343C?text=${listing.type.replace(/\s/g, '+')}`}
+                      fallback={`https://placehold.co/600x400/EEE/31343C?text=${listing.type.replace(/\s/g, '+')}`}
+                      alt={listing.type}
+                      fill
+                      className="object-cover"
+                    />
+                      <Badge
+                      className={cn(
+                        "absolute top-3 right-3 text-sm z-10",
+                        listing.status === 'Vacant' ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'
+                      )}
+                    >
+                      {listing.status}
+                    </Badge>
+                  </div>
+                </Link>
                 <CardHeader>
                   <CardTitle className="text-xl font-bold truncate">
                     Ksh {listing.price.toLocaleString()}/month
@@ -268,3 +266,5 @@ export default function MyListingsPage() {
     </>
   );
 }
+
+    

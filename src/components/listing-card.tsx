@@ -73,10 +73,9 @@ export function ListingCard({ listing }: ListingCardProps) {
           />
            <Badge 
               className={cn(
-                "absolute top-3 right-3 text-sm",
+                "absolute top-3 right-3 text-sm z-10",
                 listing.status === 'Vacant' ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'
               )}
-              variant={listing.status === 'Vacant' ? 'default' : 'secondary'}
             >
               {listing.status}
             </Badge>
@@ -127,3 +126,5 @@ export function ListingCard({ listing }: ListingCardProps) {
     </>
   );
 }
+
+    

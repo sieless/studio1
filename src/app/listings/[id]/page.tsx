@@ -166,25 +166,33 @@ export default function ListingDetailPage() {
         </Button>
 
         <Card className="overflow-hidden shadow-lg">
-          <Carousel className="w-full">
-            <CarouselContent>
-              {images.map((imgUrl, index) => (
-                <CarouselItem key={index}>
-                  <div className="relative aspect-[16/10] w-full">
-                    <ImageWithFallback
-                      src={imgUrl}
-                      fallback={fallbackImg}
-                      alt={`${listing.type} - image ${index + 1}`}
-                      fill
-                      className="object-cover"
-                      priority={index === 0}
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 800px"
-                       data-ai-hint="house interior"
-                    />
-                  </div>
-                </CarouselItem>
-              ))}
-            </CarouselContent>
+          <div className="relative">
+            <Carousel className="w-full">
+              <CarouselContent>
+                {images.map((imgUrl, index) => (
+                  <CarouselItem key={index}>
+                    <div className="relative aspect-[16/10] w-full">
+                      <ImageWithFallback
+                        src={imgUrl}
+                        fallback={fallbackImg}
+                        alt={`${listing.type} - image ${index + 1}`}
+                        fill
+                        className="object-cover"
+                        priority={index === 0}
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 800px"
+                        data-ai-hint="house interior"
+                      />
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              {images.length > 1 && (
+                  <>
+                      <CarouselPrevious className="absolute left-4 top-1/2 -translate-y-1/2 z-10" />
+                      <CarouselNext className="absolute right-4 top-1/2 -translate-y-1/2 z-10" />
+                  </>
+              )}
+            </Carousel>
              <Badge
               className={cn(
                 "absolute top-4 right-4 text-base z-10",
@@ -193,13 +201,7 @@ export default function ListingDetailPage() {
             >
               {listing.status}
             </Badge>
-            {images.length > 1 && (
-                <>
-                    <CarouselPrevious className="absolute left-4 top-1/2 -translate-y-1/2" />
-                    <CarouselNext className="absolute right-4 top-1/2 -translate-y-1/2" />
-                </>
-            )}
-          </Carousel>
+          </div>
 
           <CardContent className="p-6 md:p-8">
             <div className="flex flex-col md:flex-row justify-between md:items-start mb-4 gap-4">
@@ -276,3 +278,5 @@ export default function ListingDetailPage() {
     </div>
   );
 }
+
+    
