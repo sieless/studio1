@@ -12,7 +12,6 @@ import {
   deleteDoc,
   updateDoc,
   arrayRemove,
-  serverTimestamp,
 } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 import { type Listing } from '@/types';
@@ -21,30 +20,27 @@ import { Footer } from '@/components/footer';
 import { Button } from '@/components/ui/button';
 import {
   Card,
-  CardContent,
   CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
-import { MapPin, Bed, Building, PlusCircle, School, Edit, Loader2 } from 'lucide-react';
+import { MapPin, Bed, Building, PlusCircle, School } from 'lucide-react';
 import { DeleteListingDialog } from '@/components/delete-listing-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 
 function ListingSkeleton() {
   return (
     <Card className="overflow-hidden flex flex-col">
       <Skeleton className="h-56 w-full" />
-      <CardContent className="p-5 flex flex-col flex-grow">
+      <CardHeader className="p-5 flex flex-col flex-grow">
         <div className="flex justify-between">
           <Skeleton className="h-5 w-1/3" />
           <Skeleton className="h-5 w-1/4" />
         </div>
         <Skeleton className="h-8 w-1/2 mt-3" />
-      </CardContent>
+      </CardHeader>
       <CardFooter className="p-5 mt-auto border-t">
         <Skeleton className="h-10 w-full" />
       </CardFooter>
@@ -72,7 +68,6 @@ function ImageWithFallback({ src, fallback, alt, ...props }: any) {
 export default function MyListingsPage() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isUpdating, setIsUpdating] = useState<string | null>(null);
   
   const { user, isUserLoading } = useUser();
   const db = useFirestore();
@@ -136,36 +131,6 @@ export default function MyListingsPage() {
     }
   };
 
-  const handleDeclareVacant = async (listing: Listing) => {
-    if (!listing) return;
-    
-    setIsUpdating(listing.id);
-
-    try {
-        const listingRef = doc(db, 'listings', listing.id);
-        await updateDoc(listingRef, {
-            status: 'Vacant',
-            lastPaymentAt: serverTimestamp(), // Keep track of when it was made vacant
-        });
-
-        // Update local state to reflect change immediately
-        setListings(prev => prev.map(l => l.id === listing.id ? {...l, status: 'Vacant'} : l));
-        
-        toast({
-            title: 'Success!',
-            description: 'Your property is now listed as vacant.',
-        });
-    } catch (error) {
-         toast({
-            variant: 'destructive',
-            title: 'Update Failed',
-            description: 'Could not update the listing status. Please try again.',
-        });
-    } finally {
-        setIsUpdating(null);
-    }
-  };
-
   const getPropertyIcon = (type: string) => {
     const lowerType = type.toLowerCase();
     if (lowerType.includes('bedroom') || lowerType === 'house') {
@@ -213,12 +178,6 @@ export default function MyListingsPage() {
                       />
                     </div>
                   </Link>
-                   <div className={cn(
-                    "absolute top-0 left-0 py-1 px-3 m-3 rounded-full text-sm font-semibold",
-                    listing.status === 'Vacant' ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
-                   )}>
-                    {listing.status}
-                  </div>
                 </div>
                 <CardHeader>
                   <CardTitle className="text-xl font-bold truncate">
@@ -234,20 +193,6 @@ export default function MyListingsPage() {
                   </div>
                 </CardHeader>
                 <CardFooter className="border-t p-4 mt-auto flex items-center gap-2">
-                    {listing.status === 'Occupied' && (
-                        <Button 
-                            className="flex-1"
-                            onClick={() => handleDeclareVacant(listing)}
-                            disabled={isUpdating === listing.id}
-                        >
-                            {isUpdating === listing.id ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            ) : (
-                                <Edit className="mr-2 h-4 w-4" />
-                            )}
-                            Declare Vacant
-                        </Button>
-                    )}
                     <DeleteListingDialog onConfirm={() => handleDelete(listing.id)} />
                 </CardFooter>
               </Card>

@@ -71,12 +71,6 @@ export function ListingCard({ listing }: ListingCardProps) {
             className="w-full h-56 object-cover"
             data-ai-hint="house exterior"
           />
-          <div className={cn(
-            "absolute top-0 right-0 py-1 px-3 m-3 rounded-full text-sm font-semibold",
-            listing.status === 'Vacant' ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
-          )}>
-            {listing.status}
-          </div>
         </div>
         <CardContent className="p-5 flex flex-col flex-grow">
           <div className="flex items-center justify-between mb-3 text-sm text-muted-foreground">

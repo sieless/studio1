@@ -12,8 +12,6 @@ export type Listing = {
   images: string[];
   contact: string;
   createdAt: Timestamp;
-  status: 'Vacant' | 'Occupied';
-  lastPaymentAt?: Timestamp;
 };
 
 export type ListingFormData = {
@@ -24,7 +22,6 @@ export type ListingFormData = {
   contact: string;
   images: File[];
   features: string[];
-  status: 'Vacant' | 'Occupied';
 }
 
 export type UserProfile = {

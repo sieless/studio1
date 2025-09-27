@@ -63,7 +63,6 @@ const listingSchema = z.object({
     .any()
     .refine(files => files?.length >= 1, 'At least one image is required.'),
   features: z.array(z.string()).optional(),
-  status: z.enum(['Vacant', 'Occupied'], { required_error: 'You must select a status.'}),
 });
 
 type AddListingModalProps = {
@@ -96,7 +95,6 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
       contact: '',
       features: [],
       images: [],
-      status: 'Occupied',
       deposit: '',
     },
   });
@@ -300,41 +298,6 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                   />
                 </div>
 
-                 <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel>Current Status</FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          className="flex items-center space-x-4"
-                        >
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="Occupied" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              Occupied
-                            </FormLabel>
-                          </FormItem>
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="Vacant" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              Vacant
-                            </FormLabel>
-                          </FormItem>
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
                     control={form.control}
@@ -448,7 +411,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                       className="sr-only"
                       accept="image/*"
                       multiple
-                      onChange={handleFileChange}
+                      onChange={handleFilechange}
                     />
                   </div>
                   <FormMessage>
