@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Image from "next/image";
 import Link from 'next/link';
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Bed, MapPin, CheckCircle, Phone, Building, School } from "lucide-react";
 import { type Listing, type UserProfile } from "@/types";
-import { useUser, useFirestore, useDoc } from "@/firebase";
+import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc, updateDoc } from "firebase/firestore";
 import { PaymentModal } from "./payment-modal";
 import { useToast } from "@/hooks/use-toast";
@@ -46,8 +46,11 @@ export function ListingCard({ listing, isSubscribed }: ListingCardProps) {
   const db = useFirestore();
   const { toast } = useToast();
 
-  const userRef = user ? doc(db, "users", user.uid) : null;
-  const { data: userProfile } = useDoc<UserProfile>(userRef);
+  const userDocRef = useMemoFirebase(
+    () => (user ? doc(db, 'users', user.uid) : null),
+    [user, db]
+  );
+  const { data: userProfile } = useDoc<UserProfile>(userDocRef);
 
   const canViewContact = userProfile?.canViewContacts || false;
 
@@ -75,9 +78,9 @@ export function ListingCard({ listing, isSubscribed }: ListingCardProps) {
   };
 
   const handlePaymentSuccess = async () => {
-    if (!userRef) return;
+    if (!userDocRef) return;
     try {
-      await updateDoc(userRef, { canViewContacts: true });
+      await updateDoc(userDocRef, { canViewContacts: true });
       setShowContact(true);
       setIsPaymentModalOpen(false);
       toast({

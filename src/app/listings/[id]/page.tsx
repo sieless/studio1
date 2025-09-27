@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { useFirestore, useUser, useDoc } from '@/firebase';
+import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -101,8 +101,11 @@ export default function ListingDetailPage() {
   const { user } = useUser();
   const { toast } = useToast();
 
-  const userRef = user ? doc(db, "users", user.uid) : null;
-  const { data: userProfile } = useDoc<UserProfile>(userRef);
+  const userDocRef = useMemoFirebase(
+    () => (user ? doc(db, 'users', user.uid) : null),
+    [user, db]
+  );
+  const { data: userProfile } = useDoc<UserProfile>(userDocRef);
   const canViewContact = userProfile?.canViewContacts || false;
 
   useEffect(() => {
@@ -138,9 +141,9 @@ export default function ListingDetailPage() {
   };
 
   const handlePaymentSuccess = async () => {
-    if (!userRef) return;
+    if (!userDocRef) return;
     try {
-      await updateDoc(userRef, { canViewContacts: true });
+      await updateDoc(userDocRef, { canViewContacts: true });
       setShowContact(true);
       setIsPaymentModalOpen(false);
       toast({
