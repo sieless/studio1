@@ -6,8 +6,6 @@ import {
   onSnapshot,
   query,
   orderBy,
-  DocumentData,
-  where,
 } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 import { type Listing } from '@/types';
@@ -28,32 +26,30 @@ import Link from 'next/link';
 
 function LoadingSkeletons() {
   return (
-    <div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div
-            key={i}
-            className="bg-card rounded-xl shadow-lg overflow-hidden flex flex-col p-5 space-y-4"
-          >
-            <Skeleton className="h-56 w-full" />
-            <div className="flex justify-between">
-              <Skeleton className="h-5 w-1/3" />
-              <Skeleton className="h-5 w-1/4" />
-            </div>
-            <Skeleton className="h-8 w-1/2" />
-            <div className="space-y-2 pt-4 border-t">
-              <Skeleton className="h-4 w-1/4" />
-              <div className="flex gap-2">
-                <Skeleton className="h-6 w-24 rounded-full" />
-                <Skeleton className="h-6 w-24 rounded-full" />
-              </div>
-            </div>
-            <div className="pt-4 border-t">
-              <Skeleton className="h-12 w-full" />
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div
+          key={i}
+          className="bg-card rounded-xl shadow-lg overflow-hidden flex flex-col p-5 space-y-4"
+        >
+          <Skeleton className="h-56 w-full" />
+          <div className="flex justify-between">
+            <Skeleton className="h-5 w-1/3" />
+            <Skeleton className="h-5 w-1/4" />
+          </div>
+          <Skeleton className="h-8 w-1/2" />
+          <div className="space-y-2 pt-4 border-t">
+            <Skeleton className="h-4 w-1/4" />
+            <div className="flex gap-2">
+              <Skeleton className="h-6 w-24 rounded-full" />
+              <Skeleton className="h-6 w-24 rounded-full" />
             </div>
           </div>
-        ))}
-      </div>
+          <div className="pt-4 border-t">
+            <Skeleton className="h-12 w-full" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -126,7 +122,6 @@ export function ListingsView() {
         return locationMatch && typeMatch && priceMatch;
     });
 
-    // Take the first 2 for featured, if no filters are active
     const featured = (filters.location === 'All' && filters.type === 'All') 
       ? listings.slice(0, 2) 
       : [];

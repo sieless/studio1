@@ -11,7 +11,6 @@ import { Bed, MapPin, CheckCircle, Phone, Building, School } from "lucide-react"
 import { type Listing } from "@/types";
 import { cn } from "@/lib/utils";
 
-
 type ListingCardProps = {
   listing: Listing;
   isSubscribed: boolean;
@@ -34,7 +33,6 @@ function ImageWithFallback({ src, fallback, alt, ...props }: any) {
   );
 }
 
-
 export function ListingCard({ listing }: ListingCardProps) {
   const [showContact, setShowContact] = useState(false);
 
@@ -44,7 +42,7 @@ export function ListingCard({ listing }: ListingCardProps) {
 
   const getPropertyIcon = (type: string) => {
     const lowerType = type.toLowerCase();
-    if (lowerType.includes('bedroom') || lowerType === 'house') {
+    if (lowerType.includes('bedroom') || lowerType.includes('bedsitter') || lowerType === 'house' || lowerType === 'single room') {
       return <Bed className="w-4 h-4" />;
     }
     if (lowerType === 'hostel') {
@@ -58,7 +56,6 @@ export function ListingCard({ listing }: ListingCardProps) {
   };
 
   return (
-    <>
     <Card className="overflow-hidden group transform hover:-translate-y-1 transition-all duration-300 hover:shadow-xl flex flex-col">
       <Link href={`/listings/${listing.id}`} className="flex flex-col flex-grow">
         <div className="relative">
@@ -123,6 +120,5 @@ export function ListingCard({ listing }: ListingCardProps) {
         )}
       </CardFooter>
     </Card>
-    </>
   );
 }

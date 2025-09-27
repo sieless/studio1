@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -13,7 +13,7 @@ import {
   updateDoc,
   arrayRemove,
 } from 'firebase/firestore';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { type Listing } from '@/types';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
@@ -23,7 +23,6 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-  CardContent,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
@@ -32,6 +31,7 @@ import { DeleteListingDialog } from '@/components/delete-listing-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { AddListingModal } from '@/components/add-listing-modal';
 
 function ListingSkeleton() {
   return (
@@ -72,12 +72,19 @@ export default function MyListingsPage() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   
   const { user, isUserLoading } = useUser();
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+
+  const userListingsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(collection(db, 'listings'), where('userId', '==', user.uid));
+  }, [user, db]);
+
 
   useEffect(() => {
     if (isUserLoading) return;
@@ -86,11 +93,12 @@ export default function MyListingsPage() {
       return;
     }
 
+    if (!userListingsQuery) return;
+
     const fetchUserListings = async () => {
       try {
         setLoading(true);
-        const q = query(collection(db, 'listings'), where('userId', '==', user.uid));
-        const querySnapshot = await getDocs(q);
+        const querySnapshot = await getDocs(userListingsQuery);
         const userListings = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
@@ -109,7 +117,7 @@ export default function MyListingsPage() {
     };
 
     fetchUserListings();
-  }, [user, isUserLoading, db, router, toast]);
+  }, [user, isUserLoading, userListingsQuery, router, toast]);
 
   const handleDelete = async (listingId: string) => {
     if (!user) return;
@@ -161,8 +169,11 @@ export default function MyListingsPage() {
 
   const getPropertyIcon = (type: string) => {
     const lowerType = type.toLowerCase();
-    if (lowerType.includes('bedroom') || lowerType.includes('bedsitter') || lowerType === 'house' || lowerType === 'single room') {
+    if (lowerType.includes('bedroom') || lowerType.includes('bedsitter') || lowerType === 'single room') {
       return <Bed className="w-4 h-4" />;
+    }
+     if (lowerType === 'house') {
+      return <Building className="w-4 h-4" />;
     }
     if (lowerType === 'hostel') {
       return <School className="w-4 h-4" />;
@@ -173,14 +184,12 @@ export default function MyListingsPage() {
   return (
     <>
     <div className="flex flex-col min-h-screen">
-      <Header onPostClick={() => router.push('/')} />
+      <Header onPostClick={() => setIsModalOpen(true)} />
       <main className="flex-grow max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 w-full">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-foreground">My Listings</h1>
-          <Button asChild>
-            <Link href="/">
-              <PlusCircle className="mr-2 h-4 w-4" /> Add New Listing
-            </Link>
+          <Button onClick={() => setIsModalOpen(true)}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Add New Listing
           </Button>
         </div>
 
@@ -253,15 +262,19 @@ export default function MyListingsPage() {
             <p className="text-muted-foreground mt-2">
               Click the button below to add your first property!
             </p>
-            <Button asChild className="mt-6">
-              <Link href="/">
+            <Button onClick={() => setIsModalOpen(true)} className="mt-6">
                 <PlusCircle className="mr-2 h-4 w-4" /> Post a Listing
-              </Link>
             </Button>
           </div>
         )}
       </main>
       <Footer />
+       {isModalOpen && (
+        <AddListingModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+        />
+      )}
     </div>
     </>
   );

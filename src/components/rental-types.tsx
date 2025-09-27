@@ -11,12 +11,16 @@ type RentalTypesProps = {
 export function RentalTypes({ onTypeSelect, selectedType }: RentalTypesProps) {
   const getPropertyIcon = (type: string) => {
     const lowerType = type.toLowerCase();
-    if (lowerType.includes('bedroom') || lowerType.includes('bedsitter') || lowerType === 'house' || lowerType === 'single room') {
+    if (lowerType.includes('bedroom') || lowerType.includes('bedsitter') || lowerType === 'single room') {
       return <Bed className="w-8 h-8 mb-2" />;
+    }
+     if (lowerType === 'house') {
+      return <Building className="w-8 h-8 mb-2" />;
     }
     if (lowerType === 'hostel') {
       return <School className="w-8 h-8 mb-2" />;
     }
+    // Default Icon
     return <Building className="w-8 h-8 mb-2" />;
   };
   
@@ -25,7 +29,7 @@ export function RentalTypes({ onTypeSelect, selectedType }: RentalTypesProps) {
       <h2 className="text-2xl font-bold text-foreground mb-4">
         Browse by Category
       </h2>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
         {houseTypes.map(type => (
           <Card
             key={type}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useMemo, ChangeEvent } from 'react';
+import { useState, useTransition, ChangeEvent } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -12,7 +12,7 @@ import {
   updateDoc,
   arrayUnion,
 } from 'firebase/firestore';
-import { useFirestore, useUser, useFirebaseApp } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase';
 import { uploadImage } from '@/firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { analyzeListingImage } from '@/app/actions';
@@ -113,14 +113,20 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
       const files = Array.from(event.target.files);
+      // Ensure we don't add duplicates
+      const currentFiles = form.getValues('images') || [];
       const newFiles = files.filter(
-        file => !imageFiles.some(existingFile => existingFile.name === file.name)
+        file => !currentFiles.some((existingFile: File) => existingFile.name === file.name)
       );
+
       if (newFiles.length > 0) {
-        append(newFiles);
+        // Here, you should be appending the new file objects to the field array
+        // The `append` function from `useFieldArray` is designed for this
+         append(newFiles);
       }
     }
   };
+
 
   const handleAnalyzeImage = async (imageFile: File, index: number) => {
     setAnalysisError(null);
@@ -170,7 +176,6 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
         images: [], // Will be populated after upload
       };
 
-      // Ensure deposit is a number or not present at all
       if (listingPayload.deposit === '' || listingPayload.deposit === undefined || isNaN(listingPayload.deposit)) {
         delete listingPayload.deposit;
       } else {
@@ -179,29 +184,22 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
       listingPayload.price = Number(listingPayload.price);
 
 
-      // 1. Create the document in Firestore first to get a docRef
       const docRef = await addDoc(collection(db, 'listings'), listingPayload);
 
-      // 2. Upload images in the background (non-blocking)
       const uploadPromises = imageFiles.map((file: File) =>
         uploadImage(file, user.uid, docRef.id, progress => {
-          // You can use this callback to update UI with upload progress
           console.log(`Image ${file.name} upload is ${progress}% done`);
         })
       );
 
-      // We get the URLs and update the document, also non-blockingly.
       Promise.all(uploadPromises).then(imageUrls => {
         updateDocumentNonBlocking(doc(db, 'listings', docRef.id), { images: imageUrls });
       }).catch(error => {
         console.error("One or more image uploads failed:", error);
-        // Optionally, update the listing to indicate an image upload issue
       });
       
-      // 3. Update the user's listings array (non-blocking)
       const userRef = doc(db, 'users', user.uid);
       updateDocumentNonBlocking(userRef, { listings: arrayUnion(docRef.id) });
-
 
       toast({
         title: 'Success!',
@@ -224,7 +222,6 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
   };
 
   return (
-    <>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
           <DialogHeader className="pr-6">
@@ -232,7 +229,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
               Add a New Rental Property
             </DialogTitle>
             <DialogDescription>
-              Fill in the details below to post your property. All listings are currently free.
+              Fill in the details below to post your property.
             </DialogDescription>
           </DialogHeader>
           <div className="flex-grow overflow-y-auto pr-6 pl-6 -mr-6">
@@ -427,7 +424,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                           disabled={isAnalyzing}
                         >
                           {isAnalyzing && analyzedImageIndex === index ? (
-                            <Loader2 className="animate-spin" />
+                            <Loader2 className="animate-spin h-4 w-4" />
                           ) : (
                             <Wand2 className="mr-1 h-4 w-4" />
                           )}
@@ -575,6 +572,5 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
           </div>
         </DialogContent>
       </Dialog>
-    </>
   );
 }

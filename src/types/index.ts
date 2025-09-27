@@ -31,5 +31,5 @@ export type UserProfile = {
     email: string;
     name: string;
     listings: string[];
-    canViewContacts: boolean; // Client has paid the one-time fee
+    canViewContacts: boolean;
 }

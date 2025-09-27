@@ -12,7 +12,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuGroup
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Home, LogOut, PlusCircle, User as UserIcon, LayoutGrid, Menu, Info, Mail } from 'lucide-react';
@@ -51,7 +50,7 @@ export function Header({ onPostClick }: HeaderProps) {
             Mavazi Hub
           </h1>
         </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <Button
             onClick={onPostClick}
             className="font-semibold shadow-md hover:bg-primary/90 transition-all duration-300 transform hover:-translate-y-0.5 hidden sm:flex"
@@ -60,34 +59,53 @@ export function Header({ onPostClick }: HeaderProps) {
             Post a Listing
           </Button>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Menu className="h-5 w-5" />
-                <span className="sr-only">Open menu</span>
+          <div className="sm:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Menu className="h-6 w-6" />
+                  <span className="sr-only">Open menu</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                 <DropdownMenuItem onClick={onPostClick}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  <span>Post Listing</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/all-properties">
+                    <LayoutGrid className="mr-2 h-4 w-4" />
+                    <span>All Properties</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/about">
+                    <Info className="mr-2 h-4 w-4" />
+                    <span>About Us</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/contact">
+                    <Mail className="mr-2 h-4 w-4" />
+                    <span>Contact</span>
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          
+          <div className="hidden sm:flex items-center gap-4">
+             <Button variant="ghost" asChild>
+                <Link href="/all-properties">All Properties</Link>
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <Link href="/about">
-                  <Info className="mr-2 h-4 w-4" />
-                  <span>About Us</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/contact">
-                  <Mail className="mr-2 h-4 w-4" />
-                  <span>Contact</span>
-                </Link>
-              </DropdownMenuItem>
-               <DropdownMenuItem asChild>
-                <Link href="/all-properties">
-                  <LayoutGrid className="mr-2 h-4 w-4" />
-                  <span>All Properties</span>
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <Button variant="ghost" asChild>
+                <Link href="/about">About</Link>
+              </Button>
+               <Button variant="ghost" asChild>
+                <Link href="/contact">Contact</Link>
+              </Button>
+          </div>
 
           {isUserLoading ? (
              <Skeleton className="h-10 w-10 rounded-full" />
@@ -121,10 +139,6 @@ export function Header({ onPostClick }: HeaderProps) {
                     <LayoutGrid className="mr-2 h-4 w-4" />
                     <span>My Listings</span>
                   </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={onPostClick} className="sm:hidden">
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  <span>Post Listing</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut}>
