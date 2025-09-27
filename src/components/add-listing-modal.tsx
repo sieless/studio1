@@ -63,6 +63,9 @@ const listingSchema = z.object({
     .any()
     .refine(files => files?.length >= 1, 'At least one image is required.'),
   features: z.array(z.string()).optional(),
+  status: z.enum(['Vacant', 'Occupied'], {
+    required_error: 'You need to select a status.',
+  }),
 });
 
 type AddListingModalProps = {
@@ -96,6 +99,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
       features: [],
       images: [],
       deposit: '',
+      status: 'Vacant',
     },
   });
 
@@ -274,7 +278,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                       <FormItem>
                         <FormLabel>Location / Estate</FormLabel>
                         <Select
-                          onValuechange={field.onChange}
+                          onValueChange={field.onChange}
                           defaultValue={field.value}
                         >
                           <FormControl>
@@ -347,6 +351,41 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                           placeholder="e.g. 0712345678"
                           {...field}
                         />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem className="space-y-3">
+                      <FormLabel>Property Status</FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          className="flex space-x-4"
+                        >
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="Vacant" />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              Vacant
+                            </FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="Occupied" />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              Occupied
+                            </FormLabel>
+                          </FormItem>
+                        </RadioGroup>
                       </FormControl>
                       <FormMessage />
                     </FormItem>

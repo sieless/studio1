@@ -185,6 +185,14 @@ export default function ListingDetailPage() {
                 </CarouselItem>
               ))}
             </CarouselContent>
+             <Badge
+              className={cn(
+                "absolute top-4 right-4 text-base z-10",
+                listing.status === 'Vacant' ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'
+              )}
+            >
+              {listing.status}
+            </Badge>
             {images.length > 1 && (
                 <>
                     <CarouselPrevious className="absolute left-4 top-1/2 -translate-y-1/2" />

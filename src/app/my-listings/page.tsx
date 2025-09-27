@@ -23,12 +23,15 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
+  CardContent,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
-import { MapPin, Bed, Building, PlusCircle, School } from 'lucide-react';
+import { MapPin, Bed, Building, PlusCircle, School, Repeat, Loader2 } from 'lucide-react';
 import { DeleteListingDialog } from '@/components/delete-listing-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 function ListingSkeleton() {
   return (
@@ -68,6 +71,8 @@ function ImageWithFallback({ src, fallback, alt, ...props }: any) {
 export default function MyListingsPage() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+
   
   const { user, isUserLoading } = useUser();
   const db = useFirestore();
@@ -131,6 +136,29 @@ export default function MyListingsPage() {
     }
   };
 
+  const handleToggleStatus = async (listingId: string, currentStatus: 'Vacant' | 'Occupied') => {
+    setUpdatingStatusId(listingId);
+    const newStatus = currentStatus === 'Vacant' ? 'Occupied' : 'Vacant';
+    try {
+      const listingRef = doc(db, 'listings', listingId);
+      await updateDoc(listingRef, { status: newStatus });
+      setListings(prev => prev.map(l => l.id === listingId ? { ...l, status: newStatus } : l));
+      toast({
+        title: 'Status Updated',
+        description: `Your property is now marked as ${newStatus}.`,
+      });
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Update Failed',
+        description: 'Could not update the listing status. Please try again.',
+      });
+    } finally {
+      setUpdatingStatusId(null);
+    }
+  };
+
   const getPropertyIcon = (type: string) => {
     const lowerType = type.toLowerCase();
     if (lowerType.includes('bedroom') || lowerType === 'house') {
@@ -176,6 +204,14 @@ export default function MyListingsPage() {
                         fill
                         className="object-cover"
                       />
+                       <Badge
+                        className={cn(
+                          "absolute top-3 right-3 text-sm",
+                          listing.status === 'Vacant' ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'
+                        )}
+                      >
+                        {listing.status}
+                      </Badge>
                     </div>
                   </Link>
                 </div>
@@ -193,6 +229,19 @@ export default function MyListingsPage() {
                   </div>
                 </CardHeader>
                 <CardFooter className="border-t p-4 mt-auto flex items-center gap-2">
+                    <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={() => handleToggleStatus(listing.id, listing.status)}
+                        disabled={updatingStatusId === listing.id}
+                    >
+                      {updatingStatusId === listing.id ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Repeat className="mr-2 h-4 w-4" />
+                      )}
+                       Mark as {listing.status === 'Vacant' ? 'Occupied' : 'Vacant'}
+                    </Button>
                     <DeleteListingDialog onConfirm={() => handleDelete(listing.id)} />
                 </CardFooter>
               </Card>
