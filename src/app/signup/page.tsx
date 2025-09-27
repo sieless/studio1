@@ -42,11 +42,13 @@ export default function SignupPage() {
       
       await updateProfile(user, { displayName: name });
 
+      // Create a user profile document in Firestore
       await setDoc(doc(db, 'users', user.uid), {
         name: name,
         email: user.email,
         id: user.uid,
-        listings: []
+        listings: [],
+        canViewContacts: false, // Initialize payment status
       });
 
       toast({

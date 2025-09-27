@@ -7,7 +7,11 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Bed, MapPin, CheckCircle, Phone, Building, School } from "lucide-react";
-import { type Listing } from "@/types";
+import { type Listing, type UserProfile } from "@/types";
+import { useUser, useFirestore, useDoc } from "@/firebase";
+import { doc, updateDoc } from "firebase/firestore";
+import { PaymentModal } from "./payment-modal";
+import { useToast } from "@/hooks/use-toast";
 
 type ListingCardProps = {
   listing: Listing;
@@ -16,7 +20,16 @@ type ListingCardProps = {
 
 export function ListingCard({ listing, isSubscribed }: ListingCardProps) {
   const [showContact, setShowContact] = useState(false);
-  // Use the first image in the array, or a placeholder if the array is empty.
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const { user } = useUser();
+  const db = useFirestore();
+  const { toast } = useToast();
+
+  const userRef = user ? doc(db, "users", user.uid) : null;
+  const { data: userProfile } = useDoc<UserProfile>(userRef);
+
+  const canViewContact = userProfile?.canViewContacts || false;
+
   const initialImgSrc = listing.images && listing.images.length > 0 ? listing.images[0] : `https://placehold.co/600x400/EEE/31343C?text=${listing.type}`;
   const [imgSrc, setImgSrc] = useState(initialImgSrc);
 
@@ -33,7 +46,37 @@ export function ListingCard({ listing, isSubscribed }: ListingCardProps) {
     return <Building className="w-4 h-4" />;
   };
 
+  const handleViewContact = () => {
+    if (canViewContact) {
+      setShowContact(true);
+    } else {
+      setIsPaymentModalOpen(true);
+    }
+  };
+
+  const handlePaymentSuccess = async () => {
+    if (!userRef) return;
+    try {
+      await updateDoc(userRef, { canViewContacts: true });
+      setShowContact(true);
+      setIsPaymentModalOpen(false);
+      toast({
+        title: "Payment Successful",
+        description: "You can now view all contact details.",
+      });
+    } catch (error) {
+      console.error("Failed to update user profile:", error);
+      toast({
+        variant: "destructive",
+        title: "Update failed",
+        description: "Could not update your payment status. Please try again.",
+      });
+    }
+  };
+
+
   return (
+    <>
     <Card className="overflow-hidden group transform hover:-translate-y-1 transition-all duration-300 hover:shadow-xl flex flex-col">
       <Link href={`/listings/${listing.id}`} className="flex flex-col flex-grow">
         <div className="relative">
@@ -89,11 +132,20 @@ export function ListingCard({ listing, isSubscribed }: ListingCardProps) {
             <a href={`tel:${listing.contact}`}>{listing.contact}</a>
           </Button>
         ) : (
-          <Button onClick={() => setShowContact(true)} className="w-full">
+          <Button onClick={handleViewContact} className="w-full">
             <Phone className="mr-2 h-4 w-4" /> View Contact
           </Button>
         )}
       </CardFooter>
     </Card>
+    <PaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        onPaymentSuccess={handlePaymentSuccess}
+        amount={100}
+        description="This is a one-time fee to unlock contact details for all listings."
+        title="Unlock Contact Details"
+      />
+    </>
   );
 }

@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { useFirestore, useUser, useDoc } from '@/firebase';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 
-import { type Listing } from '@/types';
+import { type Listing, type UserProfile } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,8 @@ import {
   School,
   Wallet,
 } from 'lucide-react';
+import { PaymentModal } from '@/components/payment-modal';
+import { useToast } from '@/hooks/use-toast';
 
 function ListingDetailSkeleton() {
   return (
@@ -88,11 +90,18 @@ export default function ListingDetailPage() {
   const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
   const [showContact, setShowContact] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   const db = useFirestore();
   const params = useParams();
   const router = useRouter();
   const { id } = params;
+  const { user } = useUser();
+  const { toast } = useToast();
+
+  const userRef = user ? doc(db, "users", user.uid) : null;
+  const { data: userProfile } = useDoc<UserProfile>(userRef);
+  const canViewContact = userProfile?.canViewContacts || false;
 
   useEffect(() => {
     if (!id || typeof id !== 'string') return;
@@ -117,6 +126,34 @@ export default function ListingDetailPage() {
 
     fetchListing();
   }, [id, db]);
+
+  const handleViewContact = () => {
+    if (canViewContact) {
+      setShowContact(true);
+    } else {
+      setIsPaymentModalOpen(true);
+    }
+  };
+
+  const handlePaymentSuccess = async () => {
+    if (!userRef) return;
+    try {
+      await updateDoc(userRef, { canViewContacts: true });
+      setShowContact(true);
+      setIsPaymentModalOpen(false);
+      toast({
+        title: "Payment Successful",
+        description: "You can now view all contact details.",
+      });
+    } catch (error) {
+      console.error("Failed to update user profile:", error);
+       toast({
+        variant: "destructive",
+        title: "Update failed",
+        description: "Could not update your payment status. Please try again.",
+      });
+    }
+  };
 
   const getPropertyIcon = (type: string) => {
     const lowerType = type.toLowerCase();
@@ -252,7 +289,7 @@ export default function ListingDetailPage() {
                   </Button>
                 ) : (
                   <Button
-                    onClick={() => setShowContact(true)}
+                    onClick={handleViewContact}
                     className="w-full"
                   >
                     <Phone className="mr-2 h-4 w-4" /> View Contact Number
@@ -263,6 +300,14 @@ export default function ListingDetailPage() {
           </CardContent>
         </Card>
       </div>
+       <PaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        onPaymentSuccess={handlePaymentSuccess}
+        amount={100}
+        description="This is a one-time fee to unlock contact details for all listings."
+        title="Unlock Contact Details"
+      />
     </div>
   );
 }

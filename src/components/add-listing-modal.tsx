@@ -49,7 +49,7 @@ import { houseTypes, locations, featureOptions } from '@/lib/constants';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles, Loader2, Wand2, UploadCloud, X } from 'lucide-react';
-import { updateDocumentNonBlocking } from '@/firebase';
+import { PaymentModal } from './payment-modal';
 
 const listingSchema = z.object({
   type: z.string().min(1, 'House type is required.'),
@@ -68,6 +68,8 @@ type AddListingModalProps = {
   onClose: () => void;
 };
 
+type ListingData = z.infer<typeof listingSchema>;
+
 export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAnalyzing, startTransition] = useTransition();
@@ -78,11 +80,16 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [analyzedImageIndex, setAnalyzedImageIndex] = useState<number | null>(null);
 
+  // Payment state
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [listingDataForPayment, setListingDataForPayment] =
+    useState<ListingData | null>(null);
+
   const { toast } = useToast();
   const { user } = useUser();
   const db = useFirestore();
 
-  const form = useForm<z.infer<typeof listingSchema>>({
+  const form = useForm<ListingData>({
     resolver: zodResolver(listingSchema),
     defaultValues: {
       type: 'Bedsitter',
@@ -100,6 +107,23 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
   });
 
   const imageFiles = form.watch('images');
+
+  const getSubscriptionFee = (type: string) => {
+    switch (type) {
+      case 'Single Room':
+        return 500;
+      case '1 Bedroom':
+      case 'Double Room': // Assuming 'Double Room' is a type we might add
+        return 1000;
+      case '2 Bedroom':
+        return 2000;
+      case '3 Bedroom':
+      case 'House':
+        return 3000;
+      default:
+        return 500; // Default for Bedsitter and others
+    }
+  };
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
@@ -139,7 +163,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
     };
   };
 
-  const onSubmit = async (data: z.infer<typeof listingSchema>) => {
+  const onSubmit = async (data: ListingData) => {
     if (!user) {
       toast({
         variant: 'destructive',
@@ -148,19 +172,27 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
       });
       return;
     }
+    setListingDataForPayment(data);
+    setIsPaymentModalOpen(true);
+  };
+
+  const handlePaymentSuccess = async () => {
+    if (!listingDataForPayment || !user) return;
 
     setIsSubmitting(true);
+    setIsPaymentModalOpen(false);
 
     try {
-      const { images: imageFiles, ...restOfData } = data;
-      const listingData = {
+      const { images: imageFiles, ...restOfData } = listingDataForPayment;
+      const listingDocData = {
         ...restOfData,
-        images: [], 
+        images: [],
         userId: user.uid,
         createdAt: serverTimestamp(),
+        isPaid: true, // Mark as paid
       };
 
-      const docRef = await addDoc(collection(db, 'listings'), listingData);
+      const docRef = await addDoc(collection(db, 'listings'), listingDocData);
 
       const uploadPromises = imageFiles.map((file: File) =>
         uploadImage(file, user.uid, progress => {
@@ -171,29 +203,19 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
       Promise.all(uploadPromises)
         .then(async imageUrls => {
           const listingDocRef = doc(db, 'listings', docRef.id);
-          await updateDoc(listingDocRef, {
-            images: imageUrls,
-          });
-
-          const userRef = doc(db, 'users', user.uid);
-          await updateDoc(userRef, {
-            listings: arrayUnion(docRef.id),
-          });
+          await updateDoc(listingDocRef, { images: imageUrls });
         })
         .catch(error => {
           console.error('Image uploads failed:', error);
-          toast({
-            variant: 'destructive',
-            title: 'Image upload failed',
-            description:
-              'Your listing was created, but the images failed to upload. You may need to edit the listing to add them again.',
-          });
         });
+
+      const userRef = doc(db, 'users', user.uid);
+      await updateDoc(userRef, { listings: arrayUnion(docRef.id) });
 
       toast({
         title: 'Success!',
         description:
-          'Your listing is being created. The images will appear shortly.',
+          'Your listing is paid and being created. Images will appear shortly.',
       });
 
       form.reset();
@@ -207,159 +229,177 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
       });
     } finally {
       setIsSubmitting(false);
+      setListingDataForPayment(null);
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
-        <DialogHeader className="pr-6">
-          <DialogTitle className="text-2xl font-bold">
-            Add a New Rental Property
-          </DialogTitle>
-          <DialogDescription>
-            Fill in the details below to post a listing.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="flex-grow overflow-y-auto pr-6 pl-6 -mr-6">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="type"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Type of House</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a house type" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {houseTypes
-                            .filter(t => t !== 'All')
-                            .map(type => (
-                              <SelectItem key={type} value={type}>
-                                {type}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="location"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Location / Estate</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a location" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {locations
-                            .filter(l => l !== 'All')
-                            .map(loc => (
-                              <SelectItem key={loc} value={loc}>
-                                {loc}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <FormField
-                  control={form.control}
-                  name="price"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Rent per Month (Ksh)</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="e.g. 8500" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                 <FormField
-                  control={form.control}
-                  name="deposit"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Rent Deposit (Ksh, Optional)</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="e.g. 8500" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-
-              <FormField
-                control={form.control}
-                name="contact"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Contact Phone Number</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="tel"
-                        placeholder="e.g. 0712345678"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormItem>
-                <FormLabel>Property Images</FormLabel>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                  {fields.map((field, index) => (
-                    <div key={field.id} className="relative group aspect-square">
-                      <Image
-                        src={URL.createObjectURL(imageFiles[index])}
-                        alt={`Preview ${index}`}
-                        fill
-                        className="object-cover rounded-md"
-                      />
-                      <div className="absolute top-1 right-1 flex items-center gap-1">
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="h-6 w-6 opacity-80 group-hover:opacity-100"
-                          onClick={() => remove(index)}
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+          <DialogHeader className="pr-6">
+            <DialogTitle className="text-2xl font-bold">
+              Add a New Rental Property
+            </DialogTitle>
+            <DialogDescription>
+              Fill in the details below to post a listing. A subscription fee is
+              required.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-grow overflow-y-auto pr-6 pl-6 -mr-6">
+            <Form {...form}>
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-6"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Type of House</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
                         >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                       <Button
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a house type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {houseTypes
+                              .filter(t => t !== 'All')
+                              .map(type => (
+                                <SelectItem key={type} value={type}>
+                                  {type}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="location"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Location / Estate</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a location" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {locations
+                              .filter(l => l !== 'All')
+                              .map(loc => (
+                                <SelectItem key={loc} value={loc}>
+                                  {loc}
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="price"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Rent per Month (Ksh)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="e.g. 8500"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="deposit"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Rent Deposit (Ksh, Optional)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="e.g. 8500"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="contact"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contact Phone Number</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="tel"
+                          placeholder="e.g. 0712345678"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormItem>
+                  <FormLabel>Property Images</FormLabel>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    {fields.map((field, index) => (
+                      <div
+                        key={field.id}
+                        className="relative group aspect-square"
+                      >
+                        <Image
+                          src={URL.createObjectURL(imageFiles[index])}
+                          alt={`Preview ${index}`}
+                          fill
+                          className="object-cover rounded-md"
+                        />
+                        <div className="absolute top-1 right-1 flex items-center gap-1">
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="h-6 w-6 opacity-80 group-hover:opacity-100"
+                            onClick={() => remove(index)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <Button
                           type="button"
                           size="sm"
                           className="absolute bottom-1 left-1/2 -translate-x-1/2 h-7 opacity-80 group-hover:opacity-100"
-                          onClick={() => handleAnalyzeImage(imageFiles[index], index)}
+                          onClick={() =>
+                            handleAnalyzeImage(imageFiles[index], index)
+                          }
                           disabled={isAnalyzing}
                         >
                           {isAnalyzing && analyzedImageIndex === index ? (
@@ -369,13 +409,18 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                           )}
                           Analyze
                         </Button>
-                    </div>
-                  ))}
-                  <label htmlFor="image-upload" className="flex flex-col items-center justify-center aspect-square rounded-md border-2 border-dashed border-input bg-transparent cursor-pointer hover:bg-accent hover:text-accent-foreground text-muted-foreground">
-                     <UploadCloud className="h-8 w-8" />
-                     <span className="mt-2 text-sm text-center">Add more photos</span>
-                   </label>
-                  <Input
+                      </div>
+                    ))}
+                    <label
+                      htmlFor="image-upload"
+                      className="flex flex-col items-center justify-center aspect-square rounded-md border-2 border-dashed border-input bg-transparent cursor-pointer hover:bg-accent hover:text-accent-foreground text-muted-foreground"
+                    >
+                      <UploadCloud className="h-8 w-8" />
+                      <span className="mt-2 text-sm text-center">
+                        Add more photos
+                      </span>
+                    </label>
+                    <Input
                       id="image-upload"
                       type="file"
                       className="sr-only"
@@ -383,132 +428,141 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                       multiple
                       onChange={handleFileChange}
                     />
-                </div>
-                 <FormMessage>
-                  {form.formState.errors.images && form.formState.errors.images.message}
-                </FormMessage>
-              </FormItem>
+                  </div>
+                  <FormMessage>
+                    {form.formState.errors.images &&
+                      form.formState.errors.images.message}
+                  </FormMessage>
+                </FormItem>
 
-              {(isAnalyzing || analysisResult || analysisError) && (
-                <Alert
-                  variant={analysisError ? 'destructive' : 'default'}
-                  className="bg-muted/50"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  <AlertTitle>
-                    {isAnalyzing
-                      ? 'Analyzing...'
-                      : analysisError
-                      ? 'Analysis Failed'
-                      : 'AI Suggestions'}
-                  </AlertTitle>
-                  <AlertDescription>
-                    {isAnalyzing &&
-                      'Our AI is looking at your image. Please wait a moment.'}
-                    {analysisError && analysisError}
-                    {analysisResult && (
-                      <div className="space-y-3">
-                        <p>{analysisResult.suggestedImprovements}</p>
-                        <p className="font-semibold">Suggested Tags:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {analysisResult.suggestedTags.map(tag => (
-                            <Badge
-                              key={tag}
-                              variant="secondary"
-                              className="cursor-pointer"
-                              onClick={() => {
-                                const currentFeatures =
-                                  form.getValues('features') || [];
-                                if (
-                                  !currentFeatures.includes(tag) &&
-                                  featureOptions.includes(tag)
-                                ) {
-                                  form.setValue('features', [
-                                    ...currentFeatures,
-                                    tag,
-                                  ]);
-                                }
-                              }}
-                            >
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              <FormField
-                control={form.control}
-                name="features"
-                render={() => (
-                  <FormItem>
-                    <FormLabel>Features (Select all that apply)</FormLabel>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      {featureOptions.map(item => (
-                        <FormField
-                          key={item}
-                          control={form.control}
-                          name="features"
-                          render={({ field }) => {
-                            return (
-                              <FormItem
-                                key={item}
-                                className="flex flex-row items-start space-x-3 space-y-0"
+                {(isAnalyzing || analysisResult || analysisError) && (
+                  <Alert
+                    variant={analysisError ? 'destructive' : 'default'}
+                    className="bg-muted/50"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    <AlertTitle>
+                      {isAnalyzing
+                        ? 'Analyzing...'
+                        : analysisError
+                        ? 'Analysis Failed'
+                        : 'AI Suggestions'}
+                    </AlertTitle>
+                    <AlertDescription>
+                      {isAnalyzing &&
+                        'Our AI is looking at your image. Please wait a moment.'}
+                      {analysisError && analysisError}
+                      {analysisResult && (
+                        <div className="space-y-3">
+                          <p>{analysisResult.suggestedImprovements}</p>
+                          <p className="font-semibold">Suggested Tags:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {analysisResult.suggestedTags.map(tag => (
+                              <Badge
+                                key={tag}
+                                variant="secondary"
+                                className="cursor-pointer"
+                                onClick={() => {
+                                  const currentFeatures =
+                                    form.getValues('features') || [];
+                                  if (
+                                    !currentFeatures.includes(tag) &&
+                                    featureOptions.includes(tag)
+                                  ) {
+                                    form.setValue('features', [
+                                      ...currentFeatures,
+                                      tag,
+                                    ]);
+                                  }
+                                }}
                               >
-                                <FormControl>
-                                  <Checkbox
-                                    checked={field.value?.includes(item)}
-                                    onCheckedChange={checked => {
-                                      return checked
-                                        ? field.onChange([
-                                            ...(field.value || []),
-                                            item,
-                                          ])
-                                        : field.onChange(
-                                            (field.value || []).filter(
-                                              value => value !== item
-                                            )
-                                          );
-                                    }}
-                                  />
-                                </FormControl>
-                                <FormLabel className="text-sm font-normal">
-                                  {item}
-                                </FormLabel>
-                              </FormItem>
-                            );
-                          }}
-                        />
-                      ))}
-                    </div>
-                    <FormMessage />
-                  </FormItem>
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </AlertDescription>
+                  </Alert>
                 )}
-              />
-              <DialogFooter className="pt-6 mt-6 border-t -mb-6 pb-6 -mx-6 px-6 bg-background sticky bottom-0">
-                <DialogClose asChild>
-                  <Button type="button" variant="outline">
-                    Cancel
-                  </Button>
-                </DialogClose>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Submitting...
-                    </>
-                  ) : (
-                    'Submit Listing'
+
+                <FormField
+                  control={form.control}
+                  name="features"
+                  render={() => (
+                    <FormItem>
+                      <FormLabel>Features (Select all that apply)</FormLabel>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {featureOptions.map(item => (
+                          <FormField
+                            key={item}
+                            control={form.control}
+                            name="features"
+                            render={({ field }) => {
+                              return (
+                                <FormItem
+                                  key={item}
+                                  className="flex flex-row items-start space-x-3 space-y-0"
+                                >
+                                  <FormControl>
+                                    <Checkbox
+                                      checked={field.value?.includes(item)}
+                                      onCheckedChange={checked => {
+                                        return checked
+                                          ? field.onChange([
+                                              ...(field.value || []),
+                                              item,
+                                            ])
+                                          : field.onChange(
+                                              (field.value || []).filter(
+                                                value => value !== item
+                                              )
+                                            );
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <FormLabel className="text-sm font-normal">
+                                    {item}
+                                  </FormLabel>
+                                </FormItem>
+                              );
+                            }}
+                          />
+                        ))}
+                      </div>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </div>
-      </DialogContent>
-    </Dialog>
+                />
+                <DialogFooter className="pt-6 mt-6 border-t -mb-6 pb-6 -mx-6 px-6 bg-background sticky bottom-0">
+                  <DialogClose asChild>
+                    <Button type="button" variant="outline">
+                      Cancel
+                    </Button>
+                  </DialogClose>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      'Proceed to Payment'
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {listingDataForPayment && (
+        <PaymentModal
+          isOpen={isPaymentModalOpen}
+          onClose={() => setIsPaymentModalOpen(false)}
+          onPaymentSuccess={handlePaymentSuccess}
+          amount={getSubscriptionFee(listingDataForPayment.type)}
+          description={`1-year subscription for listing a ${listingDataForPayment.type}.`}
+          title="Listing Subscription Fee"
+        />
+      )}
+    </>
   );
 }

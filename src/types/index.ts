@@ -11,6 +11,7 @@ export type Listing = {
   images: string[];
   contact: string;
   createdAt: Timestamp;
+  isPaid: boolean; // Landlord has paid subscription for this listing
 };
 
 export type ListingFormData = {
@@ -21,4 +22,12 @@ export type ListingFormData = {
   contact: string;
   images: File[];
   features: string[];
+}
+
+export type UserProfile = {
+    id: string;
+    email: string;
+    name: string;
+    listings: string[];
+    canViewContacts: boolean; // Client has paid the one-time fee
 }
