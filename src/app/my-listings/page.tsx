@@ -32,8 +32,7 @@ import Image from 'next/image';
 import { MapPin, Bed, Building, PlusCircle, School, Edit, Loader2 } from 'lucide-react';
 import { DeleteListingDialog } from '@/components/delete-listing-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { cn, getSubscriptionFee } from '@/lib/utils';
-import { PaymentModal } from '@/components/payment-modal';
+import { cn } from '@/lib/utils';
 
 function ListingSkeleton() {
   return (
@@ -73,8 +72,6 @@ function ImageWithFallback({ src, fallback, alt, ...props }: any) {
 export default function MyListingsPage() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   
   const { user, isUserLoading } = useUser();
@@ -91,6 +88,7 @@ export default function MyListingsPage() {
 
     const fetchUserListings = async () => {
       try {
+        setLoading(true);
         const q = query(collection(db, 'listings'), where('userId', '==', user.uid));
         const querySnapshot = await getDocs(q);
         const userListings = querySnapshot.docs.map(doc => ({
@@ -138,26 +136,20 @@ export default function MyListingsPage() {
     }
   };
 
-  const handleDeclareVacantClick = (listing: Listing) => {
-    setSelectedListing(listing);
-    setIsPaymentModalOpen(true);
-  };
-  
-  const handlePaymentSuccess = async () => {
-    if (!selectedListing) return;
+  const handleDeclareVacant = async (listing: Listing) => {
+    if (!listing) return;
     
-    setIsUpdating(selectedListing.id);
-    setIsPaymentModalOpen(false);
+    setIsUpdating(listing.id);
 
     try {
-        const listingRef = doc(db, 'listings', selectedListing.id);
+        const listingRef = doc(db, 'listings', listing.id);
         await updateDoc(listingRef, {
             status: 'Vacant',
-            lastPaymentAt: serverTimestamp(),
+            lastPaymentAt: serverTimestamp(), // Keep track of when it was made vacant
         });
 
         // Update local state to reflect change immediately
-        setListings(prev => prev.map(l => l.id === selectedListing.id ? {...l, status: 'Vacant'} : l));
+        setListings(prev => prev.map(l => l.id === listing.id ? {...l, status: 'Vacant'} : l));
         
         toast({
             title: 'Success!',
@@ -171,7 +163,6 @@ export default function MyListingsPage() {
         });
     } finally {
         setIsUpdating(null);
-        setSelectedListing(null);
     }
   };
 
@@ -246,7 +237,7 @@ export default function MyListingsPage() {
                     {listing.status === 'Occupied' && (
                         <Button 
                             className="flex-1"
-                            onClick={() => handleDeclareVacantClick(listing)}
+                            onClick={() => handleDeclareVacant(listing)}
                             disabled={isUpdating === listing.id}
                         >
                             {isUpdating === listing.id ? (
@@ -280,16 +271,6 @@ export default function MyListingsPage() {
       </main>
       <Footer />
     </div>
-    {selectedListing && (
-         <PaymentModal
-            isOpen={isPaymentModalOpen}
-            onClose={() => setIsPaymentModalOpen(false)}
-            onPaymentSuccess={handlePaymentSuccess}
-            amount={getSubscriptionFee(selectedListing.type)}
-            description={`1-year subscription for declaring a ${selectedListing.type} as vacant.`}
-            title="Declare Property Vacant"
-        />
-    )}
     </>
   );
 }

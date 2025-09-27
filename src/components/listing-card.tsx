@@ -1,18 +1,14 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from 'next/link';
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Bed, MapPin, CheckCircle, Phone, Building, School } from "lucide-react";
-import { type Listing, type UserProfile } from "@/types";
-import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
-import { doc, updateDoc } from "firebase/firestore";
-import { PaymentModal } from "./payment-modal";
-import { useToast } from "@/hooks/use-toast";
+import { type Listing } from "@/types";
 import { cn } from "@/lib/utils";
 
 
@@ -39,20 +35,8 @@ function ImageWithFallback({ src, fallback, alt, ...props }: any) {
 }
 
 
-export function ListingCard({ listing, isSubscribed }: ListingCardProps) {
+export function ListingCard({ listing }: ListingCardProps) {
   const [showContact, setShowContact] = useState(false);
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const { user } = useUser();
-  const db = useFirestore();
-  const { toast } = useToast();
-
-  const userDocRef = useMemoFirebase(
-    () => (user ? doc(db, 'users', user.uid) : null),
-    [user, db]
-  );
-  const { data: userProfile } = useDoc<UserProfile>(userDocRef);
-
-  const canViewContact = userProfile?.canViewContacts || false;
 
   const initialImgSrc = listing.images && listing.images.length > 0 ? listing.images[0] : `https://placehold.co/600x400/EEE/31343C?text=${listing.type.replace(/\s/g, '+')}`;
   
@@ -70,33 +54,8 @@ export function ListingCard({ listing, isSubscribed }: ListingCardProps) {
   };
 
   const handleViewContact = () => {
-    if (canViewContact) {
-      setShowContact(true);
-    } else {
-      setIsPaymentModalOpen(true);
-    }
+    setShowContact(true);
   };
-
-  const handlePaymentSuccess = async () => {
-    if (!userDocRef) return;
-    try {
-      await updateDoc(userDocRef, { canViewContacts: true });
-      setShowContact(true);
-      setIsPaymentModalOpen(false);
-      toast({
-        title: "Payment Successful",
-        description: "You can now view all contact details.",
-      });
-    } catch (error) {
-      console.error("Failed to update user profile:", error);
-      toast({
-        variant: "destructive",
-        title: "Update failed",
-        description: "Could not update your payment status. Please try again.",
-      });
-    }
-  };
-
 
   return (
     <>
@@ -162,14 +121,6 @@ export function ListingCard({ listing, isSubscribed }: ListingCardProps) {
         )}
       </CardFooter>
     </Card>
-    <PaymentModal
-        isOpen={isPaymentModalOpen}
-        onClose={() => setIsPaymentModalOpen(false)}
-        onPaymentSuccess={handlePaymentSuccess}
-        amount={100}
-        description="This is a one-time fee to unlock contact details for all listings."
-        title="Unlock Contact Details"
-      />
     </>
   );
 }

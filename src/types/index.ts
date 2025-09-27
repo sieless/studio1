@@ -20,7 +20,7 @@ export type ListingFormData = {
   type: string;
   location: string;
   price: number;
-  deposit?: number;
+  deposit?: number | '';
   contact: string;
   images: File[];
   features: string[];

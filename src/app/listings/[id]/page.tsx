@@ -29,8 +29,6 @@ import {
   School,
   Wallet,
 } from 'lucide-react';
-import { PaymentModal } from '@/components/payment-modal';
-import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 
@@ -92,22 +90,12 @@ export default function ListingDetailPage() {
   const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
   const [showContact, setShowContact] = useState(false);
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   const db = useFirestore();
   const params = useParams();
   const router = useRouter();
   const { id } = params;
-  const { user } = useUser();
-  const { toast } = useToast();
-
-  const userDocRef = useMemoFirebase(
-    () => (user ? doc(db, 'users', user.uid) : null),
-    [user, db]
-  );
-  const { data: userProfile } = useDoc<UserProfile>(userDocRef);
-  const canViewContact = userProfile?.canViewContacts || false;
-
+  
   useEffect(() => {
     if (!id || typeof id !== 'string') return;
 
@@ -133,31 +121,7 @@ export default function ListingDetailPage() {
   }, [id, db]);
 
   const handleViewContact = () => {
-    if (canViewContact) {
-      setShowContact(true);
-    } else {
-      setIsPaymentModalOpen(true);
-    }
-  };
-
-  const handlePaymentSuccess = async () => {
-    if (!userDocRef) return;
-    try {
-      await updateDoc(userDocRef, { canViewContacts: true });
-      setShowContact(true);
-      setIsPaymentModalOpen(false);
-      toast({
-        title: "Payment Successful",
-        description: "You can now view all contact details.",
-      });
-    } catch (error) {
-      console.error("Failed to update user profile:", error);
-       toast({
-        variant: "destructive",
-        title: "Update failed",
-        description: "Could not update your payment status. Please try again.",
-      });
-    }
+    setShowContact(true);
   };
 
   const getPropertyIcon = (type: string) => {
@@ -308,14 +272,6 @@ export default function ListingDetailPage() {
           </CardContent>
         </Card>
       </div>
-       <PaymentModal
-        isOpen={isPaymentModalOpen}
-        onClose={() => setIsPaymentModalOpen(false)}
-        onPaymentSuccess={handlePaymentSuccess}
-        amount={100}
-        description="This is a one-time fee to unlock contact details for all listings."
-        title="Unlock Contact Details"
-      />
     </div>
   );
 }
