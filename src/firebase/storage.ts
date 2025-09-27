@@ -16,11 +16,12 @@ type UploadProgressCallback = (progress: number) => void;
 export const uploadImage = (
   file: File,
   userId: string,
+  listingId: string,
   onProgress: UploadProgressCallback
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
-    const fileId = `${userId}/${Date.now()}_${file.name}`;
-    const storageRef = ref(storage, `listings/${fileId}`);
+    const fileId = `${Date.now()}_${file.name}`;
+    const storageRef = ref(storage, `listings/${userId}/${listingId}/${fileId}`);
     const uploadTask = uploadBytesResumable(storageRef, file);
 
     uploadTask.on(

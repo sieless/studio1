@@ -168,7 +168,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
       };
 
       // 1. Create the document in Firestore first to get a docRef
-      const docRef = await addDoc(collection(db, 'listings'), {});
+      const docRef = await addDoc(collection(db, 'listings'), listingDocData);
 
       // 2. Upload images in the background (non-blocking)
       const uploadPromises = imageFiles.map((file: File) =>
@@ -186,10 +186,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
         // Optionally, update the listing to indicate an image upload issue
       });
       
-      // 3. Update the created document with the actual data (non-blocking)
-      updateDocumentNonBlocking(doc(db, 'listings', docRef.id), listingDocData);
-
-      // 4. Update the user's listings array (non-blocking)
+      // 3. Update the user's listings array (non-blocking)
       const userRef = doc(db, 'users', user.uid);
       updateDocumentNonBlocking(userRef, { listings: arrayUnion(docRef.id) });
 
