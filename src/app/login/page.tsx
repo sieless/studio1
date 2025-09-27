@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithPopup, GithubAuthProvider } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,7 +16,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Home } from 'lucide-react';
+import { Home, Github } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -41,6 +41,22 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  const handleGitHubSignIn = async () => {
+    setIsLoading(true);
+    try {
+      const provider = new GithubAuthProvider();
+      await signInWithPopup(auth, provider);
+      router.push('/');
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Sign In Failed',
+        description: error.message,
+      });
+      setIsLoading(false);
+    }
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
@@ -94,6 +110,10 @@ export default function LoginPage() {
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? 'Logging in...' : 'Login'}
+            </Button>
+            <Button variant="outline" className="w-full" onClick={handleGitHubSignIn} disabled={isLoading}>
+              <Github className="mr-2 h-4 w-4" />
+              Sign in with GitHub
             </Button>
           </form>
           <div className="mt-4 text-center text-sm">
