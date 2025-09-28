@@ -9,6 +9,12 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { AddListingModal } from '@/components/add-listing-modal';
+import { type Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'About Key 2 Rent',
+  description: 'Learn about Key 2 Rent, your number one source for finding rental properties in Machakos. Discover our mission and dedication to simplifying your housing search.',
+};
 
 
 export default function AboutPage() {

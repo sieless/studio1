@@ -9,6 +9,12 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { AddListingModal } from '@/components/add-listing-modal';
+import { type Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Contact Key 2 Rent',
+  description: 'Get in touch with the Key 2 Rent team. Contact us via phone, email, or visit our office in Machakos for any inquiries or support.',
+};
 
 export default function ContactPage() {
     const { user, isUserLoading } = useUser();
