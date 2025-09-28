@@ -28,6 +28,7 @@ import {
   ArrowLeft,
   School,
   Wallet,
+  Store,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Header } from '@/components/header';
@@ -129,11 +130,17 @@ export default function ListingDetailPage() {
 
   const getPropertyIcon = (type: string) => {
     const lowerType = type.toLowerCase();
-    if (lowerType.includes('bedroom') || lowerType === 'house') {
-      return <Bed className="w-4 h-4 text-primary" />;
+    if (lowerType.includes('bedroom') || lowerType.includes('bedsitter') || lowerType === 'single room') {
+      return <Bed className="w-4 h-4" />;
+    }
+     if (lowerType === 'house') {
+      return <Building className="w-4 h-4" />;
     }
     if (lowerType === 'hostel') {
-      return <School className="w-4 h-4 text-primary" />;
+      return <School className="w-4 h-4" />;
+    }
+    if (lowerType === 'business') {
+        return <Store className="w-4 h-4 text-primary" />;
     }
     return <Building className="w-4 h-4 text-primary" />;
   };

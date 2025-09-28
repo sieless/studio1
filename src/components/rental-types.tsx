@@ -1,7 +1,7 @@
 'use client';
 import { Card } from '@/components/ui/card';
 import { houseTypes } from '@/lib/constants';
-import { Bed, Building, School } from 'lucide-react';
+import { Bed, Building, School, Store } from 'lucide-react';
 
 type RentalTypesProps = {
   onTypeSelect: (type: string) => void;
@@ -20,6 +20,9 @@ export function RentalTypes({ onTypeSelect, selectedType }: RentalTypesProps) {
     if (lowerType === 'hostel') {
       return <School className="w-8 h-8 mb-2" />;
     }
+    if (lowerType === 'business') {
+        return <Store className="w-8 h-8 mb-2" />;
+    }
     // Default Icon
     return <Building className="w-8 h-8 mb-2" />;
   };
@@ -29,7 +32,7 @@ export function RentalTypes({ onTypeSelect, selectedType }: RentalTypesProps) {
       <h2 className="text-2xl font-bold text-foreground mb-4">
         Browse by Category
       </h2>
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
         {houseTypes.map(type => (
           <Card
             key={type}

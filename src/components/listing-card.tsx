@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Bed, MapPin, CheckCircle, Phone, Building, School } from "lucide-react";
+import { Bed, MapPin, CheckCircle, Phone, Building, School, Store } from "lucide-react";
 import { type Listing } from "@/types";
 import { cn } from "@/lib/utils";
 
@@ -42,11 +42,17 @@ export function ListingCard({ listing }: ListingCardProps) {
 
   const getPropertyIcon = (type: string) => {
     const lowerType = type.toLowerCase();
-    if (lowerType.includes('bedroom') || lowerType.includes('bedsitter') || lowerType === 'house' || lowerType === 'single room') {
+    if (lowerType.includes('bedroom') || lowerType.includes('bedsitter') || lowerType === 'single room') {
       return <Bed className="w-4 h-4" />;
+    }
+     if (lowerType === 'house') {
+      return <Building className="w-4 h-4" />;
     }
     if (lowerType === 'hostel') {
       return <School className="w-4 h-4" />;
+    }
+    if (lowerType === 'business') {
+        return <Store className="w-4 h-4" />;
     }
     return <Building className="w-4 h-4" />;
   };

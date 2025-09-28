@@ -47,7 +47,7 @@ export function Header({ onPostClick }: HeaderProps) {
             <Home className="h-6 w-6 text-primary" />
           </div>
           <h1 className="text-2xl font-bold text-foreground font-headline">
-            Mavazi Hub
+            Key 2 Rent
           </h1>
         </Link>
         <div className="flex items-center gap-2 sm:gap-4">

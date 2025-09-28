@@ -50,21 +50,21 @@ export default function ContactPage() {
               <Phone className="h-6 w-6 text-primary" />
               <div>
                 <h3 className="font-semibold">Phone</h3>
-                <a href="tel:+254712345678" className="text-muted-foreground hover:text-primary transition-colors">+254 712 345 678</a>
+                <a href="tel:+254708674665" className="text-muted-foreground hover:text-primary transition-colors">+254 708 674 665</a>
               </div>
             </div>
             <div className="flex items-center gap-4">
               <Mail className="h-6 w-6 text-primary" />
               <div>
                 <h3 className="font-semibold">Email</h3>
-                <a href="mailto:info@mavazihub.com" className="text-muted-foreground hover:text-primary transition-colors">info@mavazihub.com</a>
+                <a href="mailto:key2rent@gmail.com" className="text-muted-foreground hover:text-primary transition-colors">key2rent@gmail.com</a>
               </div>
             </div>
             <div className="flex items-center gap-4">
               <MapPin className="h-6 w-6 text-primary" />
               <div>
                 <h3 className="font-semibold">Office</h3>
-                <p className="text-muted-foreground">123 Mjini Street, Machakos, Kenya</p>
+                <p className="text-muted-foreground">Kimutwa Building, Opp Kpipes (Lau Junction), Machakos Town</p>
               </div>
             </div>
           </CardContent>

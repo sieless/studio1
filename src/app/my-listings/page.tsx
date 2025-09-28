@@ -27,7 +27,7 @@ import {
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
-import { MapPin, Bed, Building, PlusCircle, School, Repeat, Loader2 } from 'lucide-react';
+import { MapPin, Bed, Building, PlusCircle, School, Repeat, Loader2, Store } from 'lucide-react';
 import { DeleteListingDialog } from '@/components/delete-listing-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -178,6 +178,9 @@ export default function MyListingsPage() {
     }
     if (lowerType === 'hostel') {
       return <School className="w-4 h-4" />;
+    }
+     if (lowerType === 'business') {
+        return <Store className="w-4 h-4" />;
     }
     return <Building className="w-4 h-4" />;
   };

@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
-  title: 'Mavazi Hub',
+  title: 'Key 2 Rent',
   description: 'Simplifying your search for a new home.',
 };
 

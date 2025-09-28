@@ -95,7 +95,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
     defaultValues: {
       name: '',
       type: 'Bedsitter',
-      location: 'Mjini',
+      location: 'Machakos Town',
       price: 5000,
       contact: '',
       features: [],
