@@ -1,12 +1,40 @@
+'use client';
+
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Home, Info } from 'lucide-react';
+import { Info } from 'lucide-react';
+import { useUser } from '@/firebase';
+import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { AddListingModal } from '@/components/add-listing-modal';
+
 
 export default function AboutPage() {
+  const { user, isUserLoading } = useUser();
+  const router = useRouter();
+  const { toast } = useToast();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handlePostClick = () => {
+    if (isUserLoading) return;
+    if (!user) {
+      toast({
+        title: 'Authentication Required',
+        description: 'Please log in to post a new listing.',
+        variant: 'destructive',
+      });
+      router.push('/login');
+    } else {
+      setIsModalOpen(true);
+    }
+  };
+
+
   return (
     <div className="flex flex-col min-h-screen">
-      <Header onPostClick={() => {}} />
+      <Header onPostClick={handlePostClick} />
       <main className="flex-grow container mx-auto px-4 py-8">
         <Card className="max-w-3xl mx-auto">
           <CardHeader>
@@ -29,6 +57,12 @@ export default function AboutPage() {
         </Card>
       </main>
       <Footer />
+       {isModalOpen && (
+        <AddListingModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+        />
+      )}
     </div>
   );
 }
