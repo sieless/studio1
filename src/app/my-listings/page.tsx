@@ -210,8 +210,8 @@ export default function MyListingsPage() {
                 <Link href={`/listings/${listing.id}`} className="block">
                   <div className="relative h-56 w-full">
                     <ImageWithFallback
-                      src={(listing.images && listing.images.length > 0) ? listing.images[0] : `https://placehold.co/600x400/EEE/31343C?text=${listing.type.replace(/\s/g, '+')}`}
-                      fallback={`https://placehold.co/600x400/EEE/31343C?text=${listing.type.replace(/\s/g, '+')}`}
+                      src={(listing.images && listing.images.length > 0) ? listing.images[0] : `https://placehold.co/600x400.png/E0F8F8/008080?text=${listing.type.replace(/\s/g, '+')}`}
+                      fallback={`https://placehold.co/600x400.png/E0F8F8/008080?text=${listing.type.replace(/\s/g, '+')}`}
                       alt={listing.type}
                       fill
                       className="object-cover"

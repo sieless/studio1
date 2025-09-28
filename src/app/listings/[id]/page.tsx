@@ -172,7 +172,7 @@ export default function ListingDetailPage() {
     );
   }
 
-  const fallbackImg = `https://placehold.co/800x600/E0F8F8/008080?text=${listing.type.replace(/\s/g, '+')}`;
+  const fallbackImg = `https://placehold.co/800x600.png/E0F8F8/008080?text=${listing.type.replace(/\s/g, '+')}`;
   const images = (listing.images && listing.images.length > 0) ? listing.images : [fallbackImg];
 
   return (

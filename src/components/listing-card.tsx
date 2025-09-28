@@ -36,10 +36,9 @@ function ImageWithFallback({ src, fallback, alt, ...props }: any) {
 export function ListingCard({ listing }: ListingCardProps) {
   const [showContact, setShowContact] = useState(false);
 
-  const initialImgSrc = listing.images && listing.images.length > 0 ? listing.images[0] : `https://placehold.co/600x400/EEE/31343C?text=${listing.type.replace(/\s/g, '+')}`;
+  const fallbackImg = `https://placehold.co/600x400.png/E0F8F8/008080?text=${listing.type.replace(/\s/g, '+')}`;
+  const initialImgSrc = listing.images && listing.images.length > 0 ? listing.images[0] : fallbackImg;
   
-  const fallbackImg = `https://placehold.co/600x400/EEE/31343C?text=${listing.type.replace(/\s/g, '+')}`;
-
   const getPropertyIcon = (type: string) => {
     const lowerType = type.toLowerCase();
     if (lowerType.includes('bedroom') || lowerType.includes('bedsitter') || lowerType === 'single room') {
