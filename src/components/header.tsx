@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Home, LogOut, PlusCircle, LayoutGrid, Menu, Info, Mail } from 'lucide-react';
+import { Home, LogOut, PlusCircle, LayoutGrid, Menu, Info, Mail, LogIn } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import { ModeToggle } from './mode-toggle';
 
@@ -52,13 +52,23 @@ export function Header({ onPostClick }: HeaderProps) {
           </h1>
         </Link>
         <div className="flex items-center gap-2 sm:gap-4">
-          <Button
-            onClick={onPostClick}
-            className="font-semibold shadow-md hover:bg-primary/90 transition-all duration-300 transform hover:-translate-y-0.5 hidden sm:flex"
-          >
-            <PlusCircle className="mr-2 h-5 w-5" />
-            Post a Listing
-          </Button>
+          {user && (
+            <Button
+              onClick={onPostClick}
+              className="font-semibold shadow-md hover:bg-primary/90 transition-all duration-300 transform hover:-translate-y-0.5 hidden sm:flex"
+            >
+              <PlusCircle className="mr-2 h-5 w-5" />
+              Post a Listing
+            </Button>
+          )}
+          {!user && !isUserLoading && (
+             <Button asChild className="hidden sm:flex">
+                <Link href="/login">
+                  <LogIn className="mr-2 h-5 w-5" />
+                  Login to Post
+                </Link>
+              </Button>
+          )}
           
           <div className="hidden sm:flex items-center gap-2">
              <Button variant="ghost" asChild>
@@ -96,7 +106,7 @@ export function Header({ onPostClick }: HeaderProps) {
                       {user.displayName}
                     </p>
                     <p className="text-xs leading-none text-muted-foreground">
-                      {user.email}
+                      {user.email || user.phoneNumber}
                     </p>
                   </div>
                 </DropdownMenuLabel>
@@ -129,10 +139,20 @@ export function Header({ onPostClick }: HeaderProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                 <DropdownMenuItem onClick={onPostClick}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  <span>Post Listing</span>
-                </DropdownMenuItem>
+                 {user && (
+                    <DropdownMenuItem onClick={onPostClick}>
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      <span>Post Listing</span>
+                    </DropdownMenuItem>
+                 )}
+                 {!user && !isUserLoading && (
+                   <DropdownMenuItem asChild>
+                     <Link href="/login">
+                       <LogIn className="mr-2 h-4 w-4" />
+                       <span>Login to Post</span>
+                     </Link>
+                   </DropdownMenuItem>
+                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/all-properties">
