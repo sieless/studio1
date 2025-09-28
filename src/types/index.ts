@@ -9,11 +9,13 @@ export type Listing = {
   location: string;
   price: number;
   deposit?: number;
+  depositMonths?: number;
+  businessTerms?: string;
   features: string[];
   images: string[];
   contact: string;
   createdAt: Timestamp;
-  status: 'Vacant' | 'Occupied';
+  status: 'Vacant' | 'Occupied' | 'Available Soon';
 };
 
 export type ListingFormData = {
@@ -22,10 +24,12 @@ export type ListingFormData = {
   location: string;
   price: number;
   deposit?: number | '';
+  depositMonths?: number | '';
+  businessTerms?: string;
   contact: string;
   images: File[];
   features: string[];
-  status: 'Vacant' | 'Occupied';
+  status: 'Vacant' | 'Occupied' | 'Available Soon';
 }
 
 export type UserProfile = {

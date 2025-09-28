@@ -77,7 +77,7 @@ export function FilterPanel({ filters, onFilterChange }: FilterPanelProps) {
             id="maxPrice"
             name="maxPrice"
             min={3000}
-            max={50000}
+            max={100000}
             step={1000}
             value={[filters.maxPrice]}
             onValueChange={(value) => onFilterChange("maxPrice", value[0])}

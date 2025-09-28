@@ -12,12 +12,6 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'placehold.co',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
         hostname: 'images.unsplash.com',
         port: '',
         pathname: '/**',
@@ -30,22 +24,10 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'share.google',
+        hostname: 'firebasestorage.googleapis.com',
         port: '',
         pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'postimg.cc',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'i.postimg.cc',
-        port: '',
-        pathname: '/**',
-      },
+      }
     ],
   },
 };

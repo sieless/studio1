@@ -14,8 +14,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Home, LogOut, PlusCircle, User as UserIcon, LayoutGrid, Menu, Info, Mail } from 'lucide-react';
+import { Home, LogOut, PlusCircle, LayoutGrid, Menu, Info, Mail } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
+import { ModeToggle } from './mode-toggle';
 
 type HeaderProps = {
   onPostClick: () => void;
@@ -58,44 +59,8 @@ export function Header({ onPostClick }: HeaderProps) {
             <PlusCircle className="mr-2 h-5 w-5" />
             Post a Listing
           </Button>
-
-          <div className="sm:hidden">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Menu className="h-6 w-6" />
-                  <span className="sr-only">Open menu</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                 <DropdownMenuItem onClick={onPostClick}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  <span>Post Listing</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/all-properties">
-                    <LayoutGrid className="mr-2 h-4 w-4" />
-                    <span>All Properties</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/about">
-                    <Info className="mr-2 h-4 w-4" />
-                    <span>About Us</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/contact">
-                    <Mail className="mr-2 h-4 w-4" />
-                    <span>Contact</span>
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
           
-          <div className="hidden sm:flex items-center gap-4">
+          <div className="hidden sm:flex items-center gap-2">
              <Button variant="ghost" asChild>
                 <Link href="/all-properties">All Properties</Link>
               </Button>
@@ -106,6 +71,8 @@ export function Header({ onPostClick }: HeaderProps) {
                 <Link href="/contact">Contact</Link>
               </Button>
           </div>
+
+           <ModeToggle />
 
           {isUserLoading ? (
              <Skeleton className="h-10 w-10 rounded-full" />
@@ -152,6 +119,42 @@ export function Header({ onPostClick }: HeaderProps) {
               <Link href="/login">Login</Link>
             </Button>
           )}
+
+           <div className="sm:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Menu className="h-6 w-6" />
+                  <span className="sr-only">Open menu</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                 <DropdownMenuItem onClick={onPostClick}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  <span>Post Listing</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/all-properties">
+                    <LayoutGrid className="mr-2 h-4 w-4" />
+                    <span>All Properties</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/about">
+                    <Info className="mr-2 h-4 w-4" />
+                    <span>About Us</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/contact">
+                    <Mail className="mr-2 h-4 w-4" />
+                    <span>Contact</span>
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </nav>
     </header>

@@ -64,7 +64,7 @@ export function ListingsView() {
   const [filters, setFilters] = useState({
     location: 'All',
     type: 'All',
-    maxPrice: 50000,
+    maxPrice: 100000,
   });
 
   const db = useFirestore();

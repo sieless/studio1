@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { doc } from 'firebase/firestore';
-import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useFirestore, useDoc, useMemoFirebase, useUser } from '@/firebase';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -29,13 +29,17 @@ import {
   School,
   Wallet,
   Store,
+  CalendarClock,
+  Briefcase,
+  FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { AddListingModal } from '@/components/add-listing-modal';
 import { useToast } from '@/hooks/use-toast';
-import { useUser } from '@/firebase';
+import { getPropertyIcon, getStatusClass } from '@/lib/utils';
+import { DefaultPlaceholder } from '@/components/default-placeholder';
 
 
 function ListingDetailSkeleton() {
@@ -71,23 +75,6 @@ function ListingDetailSkeleton() {
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-function ImageWithFallback({ src, fallback, alt, ...props }: any) {
-  const [error, setError] = useState(false);
-
-  const handleError = () => {
-    setError(true);
-  };
-
-  return (
-    <Image
-      alt={alt}
-      src={error ? fallback : src}
-      onError={handleError}
-      {...props}
-    />
   );
 }
 
@@ -127,23 +114,6 @@ export default function ListingDetailPage() {
   const handleViewContact = () => {
     setShowContact(true);
   };
-
-  const getPropertyIcon = (type: string) => {
-    const lowerType = type.toLowerCase();
-    if (lowerType.includes('bedroom') || lowerType.includes('bedsitter') || lowerType === 'single room') {
-      return <Bed className="w-4 h-4" />;
-    }
-     if (lowerType === 'house') {
-      return <Building className="w-4 h-4" />;
-    }
-    if (lowerType === 'hostel') {
-      return <School className="w-4 h-4" />;
-    }
-    if (lowerType === 'business') {
-        return <Store className="w-4 h-4 text-primary" />;
-    }
-    return <Building className="w-4 h-4 text-primary" />;
-  };
   
   if (loading) {
     return (
@@ -172,8 +142,8 @@ export default function ListingDetailPage() {
     );
   }
 
-  const fallbackImg = `https://placehold.co/800x600.png/E0F8F8/008080?text=${listing.type.replace(/\s/g, '+')}`;
-  const images = (listing.images && listing.images.length > 0) ? listing.images : [fallbackImg];
+  const hasImages = listing.images && listing.images.length > 0;
+  const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(listing.location + ", Machakos")}`;
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -191,38 +161,44 @@ export default function ListingDetailPage() {
 
           <Card className="overflow-hidden shadow-lg">
             <div className="relative">
-              <Carousel className="w-full">
-                <CarouselContent>
-                  {images.map((imgUrl, index) => (
-                    <CarouselItem key={index}>
-                      <div className="relative aspect-[16/10] w-full">
-                        <ImageWithFallback
-                          src={imgUrl}
-                          fallback={fallbackImg}
-                          alt={`${listing.type} - image ${index + 1}`}
-                          fill
-                          className="object-cover"
-                          priority={index === 0}
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 800px"
-                          data-ai-hint="house interior"
-                        />
-                      </div>
-                    </CarouselItem>
-                  ))}
-                </CarouselContent>
-                {images.length > 1 && (
-                    <>
-                        <CarouselPrevious className="absolute left-4 top-1/2 -translate-y-1/2 z-10" />
-                        <CarouselNext className="absolute right-4 top-1/2 -translate-y-1/2 z-10" />
-                    </>
-                )}
-              </Carousel>
+              {hasImages ? (
+                <Carousel className="w-full">
+                  <CarouselContent>
+                    {listing.images.map((imgUrl, index) => (
+                      <CarouselItem key={index}>
+                        <div className="relative aspect-[16/10] w-full">
+                          <Image
+                            src={imgUrl}
+                            alt={`${listing.type} - image ${index + 1}`}
+                            fill
+                            className="object-cover"
+                            priority={index === 0}
+                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 800px"
+                            data-ai-hint="house interior"
+                          />
+                        </div>
+                      </CarouselItem>
+                    ))}
+                  </CarouselContent>
+                  {listing.images.length > 1 && (
+                      <>
+                          <CarouselPrevious className="absolute left-4 top-1/2 -translate-y-1/2 z-10" />
+                          <CarouselNext className="absolute right-4 top-1/2 -translate-y-1/2 z-10" />
+                      </>
+                  )}
+                </Carousel>
+              ) : (
+                <div className="aspect-[16/10] w-full bg-muted flex items-center justify-center">
+                  <DefaultPlaceholder type={listing.type} />
+                </div>
+              )}
               <Badge
                 className={cn(
                   "absolute top-4 right-4 text-base z-10",
-                  listing.status === 'Vacant' ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'
+                  getStatusClass(listing.status)
                 )}
               >
+                {listing.status === 'Available Soon' ? <CalendarClock className="mr-1.5 h-4 w-4" /> : null}
                 {listing.status}
               </Badge>
             </div>
@@ -244,12 +220,14 @@ export default function ListingDetailPage() {
                     {listing.deposit && (
                       <div className="flex items-center text-muted-foreground">
                           <Wallet className="w-4 h-4 mr-2" />
-                          <span>Deposit: Ksh {listing.deposit.toLocaleString()}</span>
+                          <span>Deposit: Ksh {listing.deposit.toLocaleString()}
+                          {listing.depositMonths && ` (${listing.depositMonths} months)`}
+                          </span>
                       </div>
                     )}
                 </div>
               </div>
-              <div className="flex items-center gap-6 text-sm text-muted-foreground mb-6 border-b pb-6">
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground mb-6 border-b pb-6">
                 <p className="font-semibold flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-primary" /> {listing.location}
                 </p>
@@ -257,48 +235,64 @@ export default function ListingDetailPage() {
                   {getPropertyIcon(listing.type)}
                   {listing.type}
                 </p>
+                <Button variant="link" size="sm" asChild className="p-0 h-auto">
+                  <a href={googleMapsUrl} target="_blank" rel="noopener noreferrer">
+                    <MapPin className="mr-1 h-4 w-4" /> View on Map
+                  </a>
+                </Button>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-8">
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground mb-3">
-                    Features
-                  </h3>
-                  {listing.features?.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {listing.features.map(feature => (
-                        <Badge key={feature} variant="outline" className="font-normal text-sm">
-                          <CheckCircle className="w-3.5 h-3.5 mr-1.5 text-green-500" />{' '}
-                          {feature}
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No extra features listed.
+              <div className="space-y-8">
+                {listing.type === 'Business' && listing.businessTerms && (
+                   <div>
+                    <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center">
+                      <FileText className="mr-2 h-5 w-5 text-primary" /> Business Terms
+                    </h3>
+                    <p className="text-sm text-muted-foreground whitespace-pre-line bg-muted/50 p-4 rounded-md">
+                      {listing.businessTerms}
                     </p>
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground mb-3">
-                    Contact Landlord
-                  </h3>
-                  {showContact ? (
-                    <Button
-                      asChild
-                      variant="secondary"
-                      className="w-full text-lg font-bold"
-                    >
-                      <a href={`tel:${listing.contact}`}>{listing.contact}</a>
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={handleViewContact}
-                      className="w-full"
-                    >
-                      <Phone className="mr-2 h-4 w-4" /> View Contact Number
-                    </Button>
-                  )}
+                  </div>
+                )}
+                <div className="grid md:grid-cols-2 gap-8">
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center">
+                       <CheckCircle className="mr-2 h-5 w-5 text-primary" /> Features
+                    </h3>
+                    {listing.features?.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {listing.features.map(feature => (
+                          <Badge key={feature} variant="outline" className="font-normal text-sm">
+                            {feature}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        No extra features listed.
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center">
+                      <Briefcase className="mr-2 h-5 w-5 text-primary" /> Contact Landlord
+                    </h3>
+                    {showContact ? (
+                      <Button
+                        asChild
+                        variant="secondary"
+                        className="w-full text-lg font-bold"
+                      >
+                        <a href={`tel:${listing.contact}`}>{listing.contact}</a>
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={handleViewContact}
+                        className="w-full"
+                      >
+                        <Phone className="mr-2 h-4 w-4" /> View Contact Number
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             </CardContent>

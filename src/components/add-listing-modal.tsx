@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, ChangeEvent } from 'react';
+import { useState, useTransition, ChangeEvent, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -45,12 +45,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { houseTypes, locations, featureOptions } from '@/lib/constants';
+import { houseTypes, locations, allFeatureOptions } from '@/lib/constants';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles, Loader2, Wand2, UploadCloud, X } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { Textarea } from './ui/textarea';
 
 
 const listingSchema = z.object({
@@ -59,12 +60,14 @@ const listingSchema = z.object({
   location: z.string().min(1, 'Location is required.'),
   price: z.coerce.number().min(1, 'Price is required.'),
   deposit: z.coerce.number().optional().or(z.literal('')),
+  depositMonths: z.coerce.number().optional().or(z.literal('')),
+  businessTerms: z.string().optional(),
   contact: z.string().min(10, 'A valid contact number is required.'),
   images: z
     .any()
     .refine(files => files?.length >= 1, 'At least one image is required.'),
   features: z.array(z.string()).optional(),
-  status: z.enum(['Vacant', 'Occupied'], {
+  status: z.enum(['Vacant', 'Occupied', 'Available Soon'], {
     required_error: 'You need to select a status.',
   }),
 });
@@ -85,6 +88,8 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
   } | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [analyzedImageIndex, setAnalyzedImageIndex] = useState<number | null>(null);
+  const [featureOptions, setFeatureOptions] = useState(allFeatureOptions.residential);
+
 
   const { toast } = useToast();
   const { user } = useUser();
@@ -101,9 +106,24 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
       features: [],
       images: [],
       deposit: '',
+      depositMonths: '',
+      businessTerms: '',
       status: 'Vacant',
     },
   });
+  
+  const selectedType = form.watch('type');
+
+  useEffect(() => {
+    if (selectedType === 'Business') {
+      setFeatureOptions(allFeatureOptions.business);
+    } else {
+      setFeatureOptions(allFeatureOptions.residential);
+    }
+    // Reset features when type changes
+    form.setValue('features', []);
+  }, [selectedType, form]);
+
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -115,15 +135,11 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
       const files = Array.from(event.target.files);
-      // Ensure we don't add duplicates
       const currentFiles = form.getValues('images') || [];
       const newFiles = files.filter(
         file => !currentFiles.some((existingFile: File) => existingFile.name === file.name)
       );
-
       if (newFiles.length > 0) {
-        // Here, you should be appending the new file objects to the field array
-        // The `append` function from `useFieldArray` is designed for this
          append(newFiles);
       }
     }
@@ -175,20 +191,20 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
         ...restOfData,
         userId: user.uid,
         createdAt: serverTimestamp(),
-        images: [], // Will be populated after upload
+        images: [],
       };
 
-      if (!listingPayload.name) {
-        delete listingPayload.name;
-      }
+      if (!listingPayload.name) delete listingPayload.name;
+      if (!listingPayload.businessTerms) delete listingPayload.businessTerms;
       
-      if (listingPayload.deposit === '' || listingPayload.deposit === undefined || isNaN(listingPayload.deposit)) {
-        delete listingPayload.deposit;
-      } else {
-        listingPayload.deposit = Number(listingPayload.deposit);
-      }
-      listingPayload.price = Number(listingPayload.price);
-
+      const fieldsToProcessAsNumbers = ['price', 'deposit', 'depositMonths'];
+      fieldsToProcessAsNumbers.forEach(field => {
+        if (listingPayload[field] === '' || listingPayload[field] === undefined || isNaN(listingPayload[field])) {
+            delete listingPayload[field];
+        } else {
+            listingPayload[field] = Number(listingPayload[field]);
+        }
+      });
 
       const docRef = await addDoc(collection(db, 'listings'), listingPayload);
 
@@ -340,16 +356,16 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                       </FormItem>
                     )}
                   />
-                  <FormField
+                   <FormField
                     control={form.control}
-                    name="deposit"
+                    name="contact"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Rent Deposit (Ksh, Optional)</FormLabel>
+                        <FormLabel>Contact Phone Number</FormLabel>
                         <FormControl>
                           <Input
-                            type="number"
-                            placeholder="e.g. 8500"
+                            type="tel"
+                            placeholder="e.g. 0712345678"
                             {...field}
                           />
                         </FormControl>
@@ -358,24 +374,84 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                     )}
                   />
                 </div>
-
-                <FormField
-                  control={form.control}
-                  name="contact"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Contact Phone Number</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="tel"
-                          placeholder="e.g. 0712345678"
-                          {...field}
+                 
+                 {selectedType === 'Business' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                            control={form.control}
+                            name="deposit"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Goodwill/Deposit (Ksh)</FormLabel>
+                                <FormControl>
+                                <Input
+                                    type="number"
+                                    placeholder="e.g. 50000"
+                                    {...field}
+                                />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
                         />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                         <FormField
+                            control={form.control}
+                            name="depositMonths"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Deposit in Months (Optional)</FormLabel>
+                                <FormControl>
+                                <Input
+                                    type="number"
+                                    placeholder="e.g. 2"
+                                    {...field}
+                                />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                    </div>
+                 )}
+
+                 {selectedType !== 'Business' && (
+                    <FormField
+                        control={form.control}
+                        name="deposit"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Rent Deposit (Ksh, Optional)</FormLabel>
+                            <FormControl>
+                            <Input
+                                type="number"
+                                placeholder="e.g. 8500"
+                                {...field}
+                            />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                 )}
+                 
+                 {selectedType === 'Business' && (
+                    <FormField
+                        control={form.control}
+                        name="businessTerms"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Business Terms (Optional)</FormLabel>
+                            <FormControl>
+                            <Textarea
+                                placeholder="Describe business-specific terms, e.g., 'Goodwill is non-refundable', 'Lease period is 5 years minimum'."
+                                {...field}
+                            />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                 )}
                 
                 <FormField
                   control={form.control}
@@ -387,7 +463,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                         <RadioGroup
                           onValueChange={field.onChange}
                           defaultValue={field.value}
-                          className="flex space-x-4"
+                          className="flex flex-wrap space-x-4"
                         >
                           <FormItem className="flex items-center space-x-2 space-y-0">
                             <FormControl>
@@ -403,6 +479,14 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                             </FormControl>
                             <FormLabel className="font-normal">
                               Occupied
+                            </FormLabel>
+                          </FormItem>
+                           <FormItem className="flex items-center space-x-2 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="Available Soon" />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              Available Soon
                             </FormLabel>
                           </FormItem>
                         </RadioGroup>
@@ -578,7 +662,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                     </FormItem>
                   )}
                 />
-                <DialogFooter className="pt-6 mt-6 border-t -mb-6 pb-6 -mx-6 px-6 bg-background sticky bottom-0">
+                <DialogFooter className="pt-6 mt-6 border-t -mb-6 pb-6 -mx-6 px-6 bg-background sticky bottom-0 z-10">
                   <DialogClose asChild>
                     <Button type="button" variant="outline">
                       Cancel

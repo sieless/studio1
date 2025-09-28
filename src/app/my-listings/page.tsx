@@ -1,19 +1,20 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   collection,
   query,
   where,
-  getDocs,
+  onSnapshot,
   doc,
   deleteDoc,
   updateDoc,
   arrayRemove,
+  orderBy,
 } from 'firebase/firestore';
-import { useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase';
 import { type Listing } from '@/types';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
@@ -27,12 +28,14 @@ import {
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
-import { MapPin, Bed, Building, PlusCircle, School, Repeat, Loader2, Store } from 'lucide-react';
+import { MapPin, PlusCircle, Repeat, Loader2, CalendarClock } from 'lucide-react';
 import { DeleteListingDialog } from '@/components/delete-listing-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { AddListingModal } from '@/components/add-listing-modal';
+import { getPropertyIcon, getStatusClass } from '@/lib/utils';
+import { DefaultPlaceholder } from '@/components/default-placeholder';
 
 function ListingSkeleton() {
   return (
@@ -52,22 +55,6 @@ function ListingSkeleton() {
   );
 }
 
-function ImageWithFallback({ src, fallback, alt, ...props }: any) {
-  const [error, setError] = useState(false);
-
-  const handleError = () => {
-    setError(true);
-  };
-
-  return (
-    <Image
-      alt={alt}
-      src={error ? fallback : src}
-      onError={handleError}
-      {...props}
-    />
-  );
-}
 
 export default function MyListingsPage() {
   const [listings, setListings] = useState<Listing[]>([]);
@@ -81,11 +68,6 @@ export default function MyListingsPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  const userListingsQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(collection(db, 'listings'), where('userId', '==', user.uid));
-  }, [user, db]);
-
 
   useEffect(() => {
     if (isUserLoading) return;
@@ -94,31 +76,32 @@ export default function MyListingsPage() {
       return;
     }
 
-    if (!userListingsQuery) return;
+    setLoading(true);
+    const q = query(
+        collection(db, 'listings'), 
+        where('userId', '==', user.uid),
+        orderBy('createdAt', 'desc')
+    );
 
-    const fetchUserListings = async () => {
-      try {
-        setLoading(true);
-        const querySnapshot = await getDocs(userListingsQuery);
+    const unsubscribe = onSnapshot(q, querySnapshot => {
         const userListings = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
         })) as Listing[];
         setListings(userListings);
-      } catch (error) {
+        setLoading(false);
+    }, (error) => {
         console.error('Error fetching user listings:', error);
         toast({
           variant: 'destructive',
           title: 'Error fetching listings',
           description: 'Could not load your properties. Please try again.',
         });
-      } finally {
         setLoading(false);
-      }
-    };
+    });
 
-    fetchUserListings();
-  }, [user, isUserLoading, userListingsQuery, router, toast]);
+    return () => unsubscribe();
+  }, [user, isUserLoading, db, router, toast]);
 
   const handleDelete = async (listingId: string) => {
     if (!user) return;
@@ -128,8 +111,6 @@ export default function MyListingsPage() {
       await updateDoc(userRef, {
         listings: arrayRemove(listingId),
       });
-
-      setListings(prev => prev.filter(listing => listing.id !== listingId));
 
       toast({
         title: 'Listing Deleted',
@@ -145,13 +126,26 @@ export default function MyListingsPage() {
     }
   };
 
-  const handleToggleStatus = async (listingId: string, currentStatus: 'Vacant' | 'Occupied') => {
+  const handleToggleStatus = async (listingId: string, currentStatus: Listing['status']) => {
     setUpdatingStatusId(listingId);
-    const newStatus = currentStatus === 'Vacant' ? 'Occupied' : 'Vacant';
+    let newStatus: Listing['status'];
+    switch (currentStatus) {
+        case 'Vacant':
+            newStatus = 'Occupied';
+            break;
+        case 'Occupied':
+            newStatus = 'Available Soon';
+            break;
+        case 'Available Soon':
+            newStatus = 'Vacant';
+            break;
+        default:
+            newStatus = 'Vacant';
+    }
+    
     try {
       const listingRef = doc(db, 'listings', listingId);
       await updateDoc(listingRef, { status: newStatus });
-      setListings(prev => prev.map(l => l.id === listingId ? { ...l, status: newStatus } : l));
       toast({
         title: 'Status Updated',
         description: `Your property is now marked as ${newStatus}.`,
@@ -168,22 +162,15 @@ export default function MyListingsPage() {
     }
   };
 
-  const getPropertyIcon = (type: string) => {
-    const lowerType = type.toLowerCase();
-    if (lowerType.includes('bedroom') || lowerType.includes('bedsitter') || lowerType === 'single room') {
-      return <Bed className="w-4 h-4" />;
+  const getNextStatus = (currentStatus: Listing['status']): Listing['status'] => {
+     switch (currentStatus) {
+        case 'Vacant': return 'Occupied';
+        case 'Occupied': return 'Available Soon';
+        case 'Available Soon': return 'Vacant';
+        default: return 'Vacant';
     }
-     if (lowerType === 'house') {
-      return <Building className="w-4 h-4" />;
-    }
-    if (lowerType === 'hostel') {
-      return <School className="w-4 h-4" />;
-    }
-     if (lowerType === 'business') {
-        return <Store className="w-4 h-4" />;
-    }
-    return <Building className="w-4 h-4" />;
-  };
+  }
+
 
   return (
     <>
@@ -209,19 +196,25 @@ export default function MyListingsPage() {
               <Card key={listing.id} className="overflow-hidden flex flex-col">
                 <Link href={`/listings/${listing.id}`} className="block">
                   <div className="relative h-56 w-full">
-                    <ImageWithFallback
-                      src={(listing.images && listing.images.length > 0) ? listing.images[0] : `https://placehold.co/600x400.png/E0F8F8/008080?text=${listing.type.replace(/\s/g, '+')}`}
-                      fallback={`https://placehold.co/600x400.png/E0F8F8/008080?text=${listing.type.replace(/\s/g, '+')}`}
-                      alt={listing.type}
-                      fill
-                      className="object-cover"
-                    />
+                    {listing.images && listing.images.length > 0 ? (
+                      <Image
+                        src={listing.images[0]}
+                        alt={listing.type}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-muted flex items-center justify-center">
+                        <DefaultPlaceholder type={listing.type} />
+                      </div>
+                    )}
                       <Badge
                       className={cn(
                         "absolute top-3 right-3 text-sm z-10",
-                        listing.status === 'Vacant' ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'
+                        getStatusClass(listing.status)
                       )}
                     >
+                      {listing.status === 'Available Soon' && <CalendarClock className="mr-1.5 h-4 w-4" />}
                       {listing.status}
                     </Badge>
                   </div>
@@ -256,7 +249,7 @@ export default function MyListingsPage() {
                       ) : (
                         <Repeat className="mr-2 h-4 w-4" />
                       )}
-                       Mark as {listing.status === 'Vacant' ? 'Occupied' : 'Vacant'}
+                       Mark as {getNextStatus(listing.status)}
                     </Button>
                     <DeleteListingDialog onConfirm={() => handleDelete(listing.id)} />
                 </CardFooter>
