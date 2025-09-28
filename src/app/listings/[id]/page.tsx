@@ -223,12 +223,17 @@ export default function ListingDetailPage() {
             <CardContent className="p-6 md:p-8">
               <div className="flex flex-col md:flex-row justify-between md:items-start mb-4 gap-4">
                 <div>
-                  <h1 className="text-4xl font-extrabold text-foreground mb-1">
+                   {listing.name && (
+                    <h1 className="text-3xl font-bold text-foreground leading-tight mb-2">
+                      {listing.name}
+                    </h1>
+                  )}
+                  <h2 className="text-4xl font-extrabold text-foreground mb-1">
                       Ksh {listing.price?.toLocaleString() || '0'}
                       <span className="text-xl font-medium text-muted-foreground">
                         /month
                       </span>
-                    </h1>
+                    </h2>
                     {listing.deposit && (
                       <div className="flex items-center text-muted-foreground">
                           <Wallet className="w-4 h-4 mr-2" />

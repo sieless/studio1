@@ -86,6 +86,11 @@ export function ListingCard({ listing }: ListingCardProps) {
               {getPropertyIcon(listing.type)} {listing.type}
             </p>
           </div>
+           {listing.name && (
+            <h3 className="text-xl font-bold text-foreground leading-tight truncate mb-1">
+              {listing.name}
+            </h3>
+          )}
           <h3 className="text-2xl font-bold text-foreground leading-tight">
             Ksh {listing.price?.toLocaleString() || "0"}
             <span className="text-base font-normal text-muted-foreground">/month</span>

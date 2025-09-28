@@ -20,6 +20,7 @@ import { Footer } from '@/components/footer';
 import { Button } from '@/components/ui/button';
 import {
   Card,
+  CardContent,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -222,11 +223,16 @@ export default function MyListingsPage() {
                     </Badge>
                   </div>
                 </Link>
-                <CardHeader>
-                  <CardTitle className="text-xl font-bold truncate">
+                <CardHeader className="flex-grow p-4">
+                   {listing.name && (
+                    <CardTitle className="text-lg font-semibold truncate">
+                      {listing.name}
+                    </CardTitle>
+                  )}
+                  <p className="text-xl font-bold text-foreground">
                     Ksh {listing.price.toLocaleString()}/month
-                  </CardTitle>
-                   <div className="flex items-center justify-between text-sm text-muted-foreground">
+                  </p>
+                   <div className="flex items-center justify-between text-sm text-muted-foreground pt-2">
                     <p className="font-semibold flex items-center gap-2">
                       <MapPin className="w-4 h-4" /> {listing.location}
                     </p>

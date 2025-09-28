@@ -54,6 +54,7 @@ import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 
 const listingSchema = z.object({
+  name: z.string().optional(),
   type: z.string().min(1, 'House type is required.'),
   location: z.string().min(1, 'Location is required.'),
   price: z.coerce.number().min(1, 'Price is required.'),
@@ -92,6 +93,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
   const form = useForm<ListingData>({
     resolver: zodResolver(listingSchema),
     defaultValues: {
+      name: '',
       type: 'Bedsitter',
       location: 'Mjini',
       price: 5000,
@@ -176,6 +178,10 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
         images: [], // Will be populated after upload
       };
 
+      if (!listingPayload.name) {
+        delete listingPayload.name;
+      }
+      
       if (listingPayload.deposit === '' || listingPayload.deposit === undefined || isNaN(listingPayload.deposit)) {
         delete listingPayload.deposit;
       } else {
@@ -238,6 +244,23 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                 onSubmit={form.handleSubmit(onSubmit)}
                 className="space-y-6"
               >
+                 <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Rental Name (Optional)</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="e.g. Gilgal Apartments"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
                     control={form.control}
