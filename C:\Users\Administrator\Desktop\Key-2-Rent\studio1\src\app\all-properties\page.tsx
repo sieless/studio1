@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -78,6 +77,7 @@ export default function AllPropertiesPage() {
   const { data: listings, isLoading: loading } = useCollection<Listing>(listingsQuery);
 
   useEffect(() => {
+    // Update the filter when the category URL parameter changes
     setFilters(prev => ({ ...prev, type: categoryFilter }));
   }, [categoryFilter]);
 

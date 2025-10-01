@@ -89,6 +89,7 @@ export function ListingsView() {
   }, [listings]);
 
   const orderedHouseTypes = useMemo(() => {
+    // Ensure 'All' is not included and that we only show types with listings
     return houseTypes.filter(type => type !== 'All' && listingsByType[type]?.length > 0);
   }, [listingsByType]);
 
