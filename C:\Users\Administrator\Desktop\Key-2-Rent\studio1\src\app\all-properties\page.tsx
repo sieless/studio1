@@ -5,11 +5,10 @@ import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   collection,
-  onSnapshot,
   query,
   orderBy,
 } from 'firebase/firestore';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore, useUser, useCollection } from '@/firebase';
 import { type Listing } from '@/types';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
@@ -56,9 +55,7 @@ function LoadingSkeletons() {
 export default function AllPropertiesPage() {
   const searchParams = useSearchParams();
   const categoryFilter = searchParams.get('category') || 'All';
-
-  const [listings, setListings] = useState<Listing[]>([]);
-  const [loading, setLoading] = useState(true);
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const [filters, setFilters] = useState({
@@ -67,34 +64,22 @@ export default function AllPropertiesPage() {
     maxPrice: 100000,
   });
 
-  useEffect(() => {
-    // Sync filter state if URL search param changes
-    setFilters(prev => ({ ...prev, type: categoryFilter }));
-  }, [categoryFilter]);
-
   const db = useFirestore();
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
 
   const isSubscribed = useMemo(() => !!user, [user]);
+  
+  const listingsQuery = useMemo(() => {
+    return query(collection(db, 'listings'), orderBy('createdAt', 'desc'));
+  }, [db]);
+
+  const { data: listings, isLoading: loading } = useCollection<Listing>(listingsQuery);
 
   useEffect(() => {
-    setLoading(true);
-    const listingsCollection = collection(db, 'listings');
-    const q = query(listingsCollection, orderBy('createdAt', 'desc'));
-
-    const unsubscribe = onSnapshot(q, snapshot => {
-      const listingsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Listing[];
-      setListings(listingsData);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [db]);
+    setFilters(prev => ({ ...prev, type: categoryFilter }));
+  }, [categoryFilter]);
 
   const handleFilterChange = (name: string, value: string | number) => {
     setFilters(prev => ({ ...prev, [name]: value }));
@@ -115,6 +100,7 @@ export default function AllPropertiesPage() {
   };
 
   const filteredListings = useMemo(() => {
+    if (!listings) return [];
     return listings.filter(listing => {
       const locationMatch =
         filters.location === 'All' || listing.location === filters.location;
@@ -135,17 +121,19 @@ export default function AllPropertiesPage() {
               Back to Home
             </Link>
           </Button>
+
           <FilterPanel
             filters={filters}
             onFilterChange={handleFilterChange}
           />
+          
           {loading ? (
             <LoadingSkeletons />
           ) : (
             <div className="space-y-12">
               <div>
                 <h1 className="text-3xl font-bold text-foreground mb-6">
-                  {filters.type === 'All' ? 'All Properties' : filters.type + 's'} ({filteredListings.length})
+                  {filters.type === 'All' ? 'All Properties' : `${filters.type}s`} ({filteredListings.length})
                 </h1>
                 <ListingGrid
                   listings={filteredListings}

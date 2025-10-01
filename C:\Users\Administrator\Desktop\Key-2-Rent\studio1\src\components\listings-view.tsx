@@ -1,14 +1,13 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   collection,
-  onSnapshot,
   query,
   orderBy,
 } from 'firebase/firestore';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore, useUser, useCollection } from '@/firebase';
 import { type Listing } from '@/types';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
@@ -22,37 +21,32 @@ import { ListingCategorySection } from './listing-category-section';
 
 function LoadingSkeletons() {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div
-          key={i}
-          className="bg-card rounded-xl shadow-lg overflow-hidden flex flex-col p-5 space-y-4"
-        >
-          <Skeleton className="h-56 w-full" />
-          <div className="flex justify-between">
-            <Skeleton className="h-5 w-1/3" />
-            <Skeleton className="h-5 w-1/4" />
-          </div>
-          <Skeleton className="h-8 w-1/2" />
-          <div className="space-y-2 pt-4 border-t">
-            <Skeleton className="h-4 w-1/4" />
-            <div className="flex gap-2">
-              <Skeleton className="h-6 w-24 rounded-full" />
-              <Skeleton className="h-6 w-24 rounded-full" />
+    <div className="space-y-12">
+        {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i}>
+                 <Skeleton className="h-8 w-48 mb-6" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                {Array.from({ length: 4 }).map((_, j) => (
+                    <div
+                    key={j}
+                    className="bg-card rounded-xl shadow-lg overflow-hidden flex flex-col p-5 space-y-4"
+                    >
+                    <Skeleton className="h-56 w-full" />
+                    <Skeleton className="h-5 w-1/3" />
+                    <Skeleton className="h-8 w-1/2" />
+                    <div className="pt-4 border-t">
+                        <Skeleton className="h-12 w-full" />
+                    </div>
+                    </div>
+                ))}
+                </div>
             </div>
-          </div>
-          <div className="pt-4 border-t">
-            <Skeleton className="h-12 w-full" />
-          </div>
-        </div>
-      ))}
+        ))}
     </div>
   );
 }
 
 export function ListingsView() {
-  const [listings, setListings] = useState<Listing[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const db = useFirestore();
@@ -62,22 +56,12 @@ export function ListingsView() {
 
   const isSubscribed = useMemo(() => !!user, [user]);
 
-  useEffect(() => {
-    setLoading(true);
-    const listingsCollection = collection(db, 'listings');
-    const q = query(listingsCollection, orderBy('createdAt', 'desc'));
-
-    const unsubscribe = onSnapshot(q, snapshot => {
-      const listingsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Listing[];
-      setListings(listingsData);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
+  const listingsQuery = useMemo(() => {
+    return query(collection(db, 'listings'), orderBy('createdAt', 'desc'));
   }, [db]);
+
+  const { data: listings, isLoading: loading } = useCollection<Listing>(listingsQuery);
+
 
   const handlePostClick = () => {
     if (isUserLoading) return;
@@ -94,6 +78,7 @@ export function ListingsView() {
   };
 
   const listingsByType = useMemo(() => {
+    if (!listings) return {};
     const grouped: { [key: string]: Listing[] } = {};
     for (const listing of listings) {
       if (!grouped[listing.type]) {

@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -172,7 +173,13 @@ export function Header({ onPostClick }: HeaderProps) {
                    </DropdownMenuItem>
                  )}
                 <DropdownMenuSeparator />
-                 {userProfile?.role === 'admin' && (
+                 <DropdownMenuItem asChild>
+                  <Link href="/my-listings">
+                    <LayoutGrid className="mr-2 h-4 w-4" />
+                    <span>My Listings</span>
+                  </Link>
+                </DropdownMenuItem>
+                {userProfile?.role === 'admin' && (
                   <DropdownMenuItem asChild>
                      <Link href="/admin">
                       <Shield className="mr-2 h-4 w-4" />

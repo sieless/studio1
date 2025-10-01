@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -82,13 +83,11 @@ export default function SignupPage() {
 
       if (!user) throw new Error("User not found after OTP verification.");
       
-      // Since phone users don't have a display name set initially.
       await updateProfile(user, { displayName: name });
 
-      // Create a user profile document in Firestore
       await setDoc(doc(db, 'users', user.uid), {
         name: name,
-        email: user.email, // This will be null for phone auth
+        email: user.email, 
         phone: user.phoneNumber,
         id: user.uid,
         listings: [],
@@ -113,7 +112,6 @@ export default function SignupPage() {
       
       await updateProfile(user, { displayName: name });
 
-      // Create a user profile document in Firestore
       await setDoc(doc(db, 'users', user.uid), {
         name: name,
         email: user.email,
