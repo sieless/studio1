@@ -40,7 +40,7 @@ export function ListingCategorySection({
         )}
       </div>
       <ListingGrid listings={visibleListings} isSubscribed={isSubscribed} columns={4} />
-      {!hasMore && (
+      {!hasMore && listings.length > 0 && (
         <div className="text-center mt-8">
             <Button asChild variant="outline">
                 <Link href={`/all-properties?category=${encodeURIComponent(category)}`}>
