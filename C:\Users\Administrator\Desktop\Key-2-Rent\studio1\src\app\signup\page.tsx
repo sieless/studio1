@@ -119,7 +119,7 @@ export default function SignupPage() {
         id: user.uid,
         listings: [],
         canViewContacts: false,
-        role: user.email === 'sieleseyontech@gmail.com' ? 'admin' : 'user',
+        role: user.email === 'titwzmaihya@gmail.com' ? 'admin' : 'user',
       });
 
       toast({ title: 'Account Created', description: 'You have been successfully signed up.' });
