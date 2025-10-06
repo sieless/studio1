@@ -27,7 +27,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import Image from 'next/image';
+import { OptimizedImage } from '@/components/optimized-image';
 import { MapPin, PlusCircle, Repeat, Loader2, CalendarClock } from 'lucide-react';
 import { DeleteListingDialog } from '@/components/delete-listing-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -196,18 +196,13 @@ export default function MyListingsPage() {
               <Card key={listing.id} className="overflow-hidden flex flex-col">
                 <Link href={`/listings/${listing.id}`} className="block">
                   <div className="relative h-56 w-full">
-                    {listing.images && listing.images.length > 0 ? (
-                      <Image
-                        src={listing.images[0]}
-                        alt={listing.type}
-                        fill
-                        className="object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-muted flex items-center justify-center">
-                        <DefaultPlaceholder type={listing.type} />
-                      </div>
-                    )}
+                    <OptimizedImage
+                      src={listing.images && listing.images.length > 0 ? listing.images[0] : null}
+                      alt={listing.name || listing.type}
+                      fill
+                      className="object-cover"
+                      fallbackType={listing.type}
+                    />
                       <Badge
                       className={cn(
                         "absolute top-3 right-3 text-sm z-10",

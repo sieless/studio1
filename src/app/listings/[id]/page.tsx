@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { doc } from 'firebase/firestore';
 import { useFirestore, useDoc, useMemoFirebase, useUser } from '@/firebase';
 import { useParams, useRouter } from 'next/navigation';
-import Image from 'next/image';
+import { OptimizedImage } from '@/components/optimized-image';
 import Link from 'next/link';
 
 import { type Listing } from '@/types';
@@ -167,13 +167,14 @@ export default function ListingDetailPage() {
                     {listing.images.map((imgUrl, index) => (
                       <CarouselItem key={index}>
                         <div className="relative aspect-[16/10] w-full">
-                          <Image
+                          <OptimizedImage
                             src={imgUrl}
-                            alt={`${listing.type} - image ${index + 1}`}
+                            alt={`${listing.name || listing.type} - image ${index + 1}`}
                             fill
                             className="object-cover"
                             priority={index === 0}
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 800px"
+                            fallbackType={listing.type}
                           />
                         </div>
                       </CarouselItem>

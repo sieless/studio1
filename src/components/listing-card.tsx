@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from "react";
-import Image from "next/image";
+import { OptimizedImage } from "./optimized-image";
 import Link from 'next/link';
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -31,20 +31,14 @@ export function ListingCard({ listing }: ListingCardProps) {
     <Card className="overflow-hidden group transform hover:-translate-y-1 transition-all duration-300 hover:shadow-xl flex flex-col">
       <Link href={`/listings/${listing.id}`} className="flex flex-col flex-grow">
         <div className="relative h-56 w-full">
-            {hasImages ? (
-              <Image
-                src={listing.images[0]}
-                alt={listing.type}
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                data-ai-hint="house exterior"
-              />
-            ) : (
-               <div className="w-full h-full bg-muted flex items-center justify-center">
-                  <DefaultPlaceholder type={listing.type} />
-                </div>
-            )}
+            <OptimizedImage
+              src={hasImages ? listing.images[0] : null}
+              alt={listing.name || listing.type}
+              fill
+              className="object-cover"
+              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              fallbackType={listing.type}
+            />
            <Badge 
               className={cn(
                 "absolute top-3 right-3 text-sm z-10",
