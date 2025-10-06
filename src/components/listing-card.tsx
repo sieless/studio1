@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from "react";
-import { OptimizedImage } from "./optimized-image";
+import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,16 +30,22 @@ export function ListingCard({ listing }: ListingCardProps) {
   return (
     <Card className="overflow-hidden group transform hover:-translate-y-1 transition-all duration-300 hover:shadow-xl flex flex-col h-full">
       <Link href={`/listings/${listing.id}`} className="flex flex-col h-full">
-        <div className="relative w-full h-56 flex-shrink-0 overflow-hidden bg-muted">
-            <OptimizedImage
-              src={hasImages ? listing.images[0] : null}
-              alt={listing.name || listing.type}
-              fill
-              className="object-cover w-full h-full"
-              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-              fallbackType={listing.type}
-            />
-           <Badge 
+        <div className="relative w-full h-56 flex-shrink-0 overflow-hidden bg-muted rounded-t-lg">
+            {hasImages ? (
+              <Image
+                src={listing.images[0]}
+                alt={listing.name || listing.type}
+                fill
+                className="object-cover w-full h-full"
+                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                unoptimized
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <DefaultPlaceholder type={listing.type} />
+              </div>
+            )}
+           <Badge
               className={cn(
                 "absolute top-3 right-3 text-sm z-10",
                 getStatusClass(listing.status)
@@ -48,6 +54,11 @@ export function ListingCard({ listing }: ListingCardProps) {
               {listing.status === 'Available Soon' && <CalendarClock className="mr-1.5 h-4 w-4" />}
               {listing.status}
             </Badge>
+            {hasImages && listing.images.length > 1 && (
+              <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
+                {listing.images.length} photos
+              </div>
+            )}
         </div>
         <CardContent className="p-5 flex flex-col flex-grow">
           <div className="flex items-center justify-between mb-3 text-sm text-muted-foreground">

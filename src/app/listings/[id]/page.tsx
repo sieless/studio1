@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react';
 import { doc } from 'firebase/firestore';
 import { useFirestore, useDoc, useMemoFirebase, useUser } from '@/firebase';
 import { useParams, useRouter } from 'next/navigation';
-import { OptimizedImage } from '@/components/optimized-image';
+import { ImageGallery } from '@/components/image-gallery';
 import Link from 'next/link';
 
 import { type Listing } from '@/types';
@@ -12,13 +12,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from '@/components/ui/carousel';
 import {
   Bed,
   MapPin,
@@ -160,41 +153,21 @@ export default function ListingDetailPage() {
           </Button>
 
           <Card className="overflow-hidden shadow-lg">
-            <div className="relative">
+            <div className="relative p-6">
               {hasImages ? (
-                <Carousel className="w-full">
-                  <CarouselContent>
-                    {listing.images.map((imgUrl, index) => (
-                      <CarouselItem key={index}>
-                        <div className="relative aspect-[16/10] w-full overflow-hidden bg-muted">
-                          <OptimizedImage
-                            src={imgUrl}
-                            alt={`${listing.name || listing.type} - image ${index + 1}`}
-                            fill
-                            className="object-cover w-full h-full"
-                            priority={index === 0}
-                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 800px"
-                            fallbackType={listing.type}
-                          />
-                        </div>
-                      </CarouselItem>
-                    ))}
-                  </CarouselContent>
-                  {listing.images.length > 1 && (
-                      <>
-                          <CarouselPrevious className="absolute left-4 top-1/2 -translate-y-1/2 z-10" />
-                          <CarouselNext className="absolute right-4 top-1/2 -translate-y-1/2 z-10" />
-                      </>
-                  )}
-                </Carousel>
+                <ImageGallery
+                  images={listing.images}
+                  alt={listing.name || listing.type}
+                  showThumbnails={true}
+                />
               ) : (
-                <div className="aspect-[16/10] w-full bg-muted flex items-center justify-center">
+                <div className="aspect-[16/10] w-full bg-muted flex items-center justify-center rounded-lg">
                   <DefaultPlaceholder type={listing.type} />
                 </div>
               )}
               <Badge
                 className={cn(
-                  "absolute top-4 right-4 text-base z-10",
+                  "absolute top-10 right-10 text-base z-20",
                   getStatusClass(listing.status)
                 )}
               >

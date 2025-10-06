@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useTransition, ChangeEvent, useEffect } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useState, useTransition, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import {
@@ -16,7 +16,7 @@ import { useFirestore, useUser } from '@/firebase';
 import { uploadImage } from '@/firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { analyzeListingImage } from '@/app/actions';
-import Image from 'next/image';
+import { ImageUpload } from '@/components/image-upload';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -48,7 +48,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { houseTypes, locations, allFeatureOptions } from '@/lib/constants';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Loader2, Wand2, UploadCloud, X } from 'lucide-react';
+import { Sparkles, Loader2, Wand2 } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Textarea } from './ui/textarea';
@@ -125,25 +125,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
   }, [selectedType, form]);
 
 
-  const { fields, append, remove } = useFieldArray({
-    control: form.control,
-    name: 'images',
-  });
-
-  const imageFiles = form.watch('images');
-
-  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files) {
-      const files = Array.from(event.target.files);
-      const currentFiles = form.getValues('images') || [];
-      const newFiles = files.filter(
-        file => !currentFiles.some((existingFile: File) => existingFile.name === file.name)
-      );
-      if (newFiles.length > 0) {
-         append(newFiles);
-      }
-    }
-  };
+  const imageFiles = form.watch('images') || [];
 
 
   const handleAnalyzeImage = async (imageFile: File, index: number) => {
@@ -496,72 +478,40 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                   )}
                 />
 
-                <FormItem>
-                  <FormLabel>Property Images</FormLabel>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    {fields.map((field, index) => (
-                      <div
-                        key={field.id}
-                        className="relative group aspect-square"
-                      >
-                        <Image
-                          src={URL.createObjectURL(imageFiles[index])}
-                          alt={`Preview ${index}`}
-                          fill
-                          className="object-cover rounded-md"
+                <FormField
+                  control={form.control}
+                  name="images"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Property Images</FormLabel>
+                      <FormControl>
+                        <ImageUpload
+                          images={field.value || []}
+                          onChange={field.onChange}
+                          maxImages={10}
                         />
-                        <div className="absolute top-1 right-1 flex items-center gap-1">
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="icon"
-                            className="h-6 w-6 opacity-80 group-hover:opacity-100"
-                            onClick={() => remove(index)}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
+                      </FormControl>
+                      <FormMessage />
+                      {imageFiles.length > 0 && (
                         <Button
                           type="button"
+                          variant="outline"
                           size="sm"
-                          className="absolute bottom-1 left-1/2 -translate-x-1/2 h-7 opacity-80 group-hover:opacity-100"
-                          onClick={() =>
-                            handleAnalyzeImage(imageFiles[index], index)
-                          }
+                          className="mt-2"
+                          onClick={() => handleAnalyzeImage(imageFiles[0], 0)}
                           disabled={isAnalyzing}
                         >
-                          {isAnalyzing && analyzedImageIndex === index ? (
-                            <Loader2 className="animate-spin h-4 w-4" />
+                          {isAnalyzing ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           ) : (
-                            <Wand2 className="mr-1 h-4 w-4" />
+                            <Wand2 className="mr-2 h-4 w-4" />
                           )}
-                          Analyze
+                          Analyze First Image with AI
                         </Button>
-                      </div>
-                    ))}
-                    <label
-                      htmlFor="image-upload"
-                      className="flex flex-col items-center justify-center aspect-square rounded-md border-2 border-dashed border-input bg-transparent cursor-pointer hover:bg-accent hover:text-accent-foreground text-muted-foreground"
-                    >
-                      <UploadCloud className="h-8 w-8" />
-                      <span className="mt-2 text-sm text-center">
-                        Add photos
-                      </span>
-                    </label>
-                    <Input
-                      id="image-upload"
-                      type="file"
-                      className="sr-only"
-                      accept="image/*"
-                      multiple
-                      onChange={handleFileChange}
-                    />
-                  </div>
-                  <FormMessage>
-                    {form.formState.errors.images &&
-                      (form.formState.errors.images.message as string)}
-                  </FormMessage>
-                </FormItem>
+                      )}
+                    </FormItem>
+                  )}
+                />
 
                 {(isAnalyzing || analysisResult || analysisError) && (
                   <Alert

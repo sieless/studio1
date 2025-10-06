@@ -38,4 +38,16 @@ export type UserProfile = {
     name: string;
     listings: string[];
     canViewContacts: boolean;
+    createdAt?: Timestamp;
+    suspended?: boolean;
+}
+
+export type AdminStats = {
+    totalUsers: number;
+    totalListings: number;
+    listingsByType: Record<string, number>;
+    listingsByLocation: Record<string, number>;
+    listingsByStatus: Record<string, number>;
+    recentUsers: number;
+    recentListings: number;
 }

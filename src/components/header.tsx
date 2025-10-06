@@ -14,9 +14,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Home, LogOut, PlusCircle, LayoutGrid, Menu, Info, Mail, LogIn } from 'lucide-react';
+import { Home, LogOut, PlusCircle, LayoutGrid, Menu, Info, Mail, LogIn, Shield } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import { ModeToggle } from './mode-toggle';
+import { isAdmin } from '@/lib/admin';
 
 type HeaderProps = {
   onPostClick: () => void;
@@ -117,6 +118,17 @@ export function Header({ onPostClick }: HeaderProps) {
                     <span>My Listings</span>
                   </Link>
                 </DropdownMenuItem>
+                {isAdmin(user.email) && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin">
+                        <Shield className="mr-2 h-4 w-4 text-orange-500" />
+                        <span className="font-semibold text-orange-500">Admin Dashboard</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  </>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleSignOut}>
                   <LogOut className="mr-2 h-4 w-4" />
@@ -172,6 +184,17 @@ export function Header({ onPostClick }: HeaderProps) {
                     <span>Contact</span>
                   </Link>
                 </DropdownMenuItem>
+                {user && isAdmin(user.email) && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin">
+                        <Shield className="mr-2 h-4 w-4 text-orange-500" />
+                        <span className="font-semibold text-orange-500">Admin</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
