@@ -166,12 +166,12 @@ export default function ListingDetailPage() {
                   <CarouselContent>
                     {listing.images.map((imgUrl, index) => (
                       <CarouselItem key={index}>
-                        <div className="relative aspect-[16/10] w-full">
+                        <div className="relative aspect-[16/10] w-full overflow-hidden bg-muted">
                           <OptimizedImage
                             src={imgUrl}
                             alt={`${listing.name || listing.type} - image ${index + 1}`}
                             fill
-                            className="object-cover"
+                            className="object-cover w-full h-full"
                             priority={index === 0}
                             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 800px"
                             fallbackType={listing.type}

@@ -28,14 +28,14 @@ export function ListingCard({ listing }: ListingCardProps) {
   };
 
   return (
-    <Card className="overflow-hidden group transform hover:-translate-y-1 transition-all duration-300 hover:shadow-xl flex flex-col">
-      <Link href={`/listings/${listing.id}`} className="flex flex-col flex-grow">
-        <div className="relative h-56 w-full">
+    <Card className="overflow-hidden group transform hover:-translate-y-1 transition-all duration-300 hover:shadow-xl flex flex-col h-full">
+      <Link href={`/listings/${listing.id}`} className="flex flex-col h-full">
+        <div className="relative w-full h-56 flex-shrink-0 overflow-hidden bg-muted">
             <OptimizedImage
               src={hasImages ? listing.images[0] : null}
               alt={listing.name || listing.type}
               fill
-              className="object-cover"
+              className="object-cover w-full h-full"
               sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
               fallbackType={listing.type}
             />

@@ -36,21 +36,26 @@ export function OptimizedImage({
   // If no src or error, show placeholder
   if (!src || error) {
     return (
-      <div className={`${className} bg-muted flex items-center justify-center`}>
+      <div className={`${fill ? 'absolute inset-0' : ''} ${className} bg-muted flex items-center justify-center min-h-[200px]`}>
         <DefaultPlaceholder type={fallbackType} />
       </div>
     );
   }
 
   // Ensure Firebase Storage URLs use the correct format
-  const cleanSrc = src.includes('firebasestorage.googleapis.com')
+  let cleanSrc = src.includes('firebasestorage.googleapis.com')
     ? src.replace(/^http:/, 'https:') // Force HTTPS
     : src;
 
+  // Handle blob URLs (for preview during upload)
+  if (src.startsWith('blob:')) {
+    cleanSrc = src;
+  }
+
   return (
-    <>
+    <div className={fill ? 'absolute inset-0' : 'relative'}>
       {loading && (
-        <div className={`${className} bg-muted animate-pulse`} />
+        <div className={`${fill ? 'absolute inset-0' : ''} ${className} bg-muted animate-pulse min-h-[200px]`} />
       )}
       <Image
         src={cleanSrc}
@@ -59,20 +64,21 @@ export function OptimizedImage({
         width={!fill ? width : undefined}
         height={!fill ? height : undefined}
         className={`${className} ${loading ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
-        sizes={sizes}
+        sizes={sizes || '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'}
         priority={priority}
         onLoadingComplete={() => setLoading(false)}
         onError={(e) => {
           console.error('Image load error:', {
             src: cleanSrc,
             alt,
-            error: e,
+            error: e.currentTarget.error,
           });
           setError(true);
           setLoading(false);
         }}
-        unoptimized={cleanSrc.includes('firebasestorage.googleapis.com')} // Disable Next.js optimization for Firebase Storage
+        unoptimized // Disable Next.js optimization to prevent 400 errors
+        loading={priority ? 'eager' : 'lazy'}
       />
-    </>
+    </div>
   );
 }

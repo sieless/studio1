@@ -193,14 +193,14 @@ export default function MyListingsPage() {
         ) : listings.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {listings.map(listing => (
-              <Card key={listing.id} className="overflow-hidden flex flex-col">
+              <Card key={listing.id} className="overflow-hidden flex flex-col h-full">
                 <Link href={`/listings/${listing.id}`} className="block">
-                  <div className="relative h-56 w-full">
+                  <div className="relative w-full h-56 flex-shrink-0 overflow-hidden bg-muted">
                     <OptimizedImage
                       src={listing.images && listing.images.length > 0 ? listing.images[0] : null}
                       alt={listing.name || listing.type}
                       fill
-                      className="object-cover"
+                      className="object-cover w-full h-full"
                       fallbackType={listing.type}
                     />
                       <Badge
