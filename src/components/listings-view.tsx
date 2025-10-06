@@ -13,6 +13,7 @@ import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { FilterPanel } from '@/components/filter-panel';
 import { ListingGrid } from '@/components/listing-grid';
+import { CategorizedListingGrid } from '@/components/categorized-listing-grid';
 import { AddListingModal } from '@/components/add-listing-modal';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RentalTypes } from './rental-types';
@@ -60,6 +61,7 @@ export function ListingsView() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'categorized'>('categorized');
 
   const [filters, setFilters] = useState({
     location: 'All',
@@ -156,16 +158,46 @@ export function ListingsView() {
               
               <div>
                   <FilterPanel filters={filters} onFilterChange={handleFilterChange} />
-                  <h2 className="text-3xl font-bold text-foreground mb-6">
-                      All Properties ({regularListings.length})
-                  </h2>
-                  <ListingGrid listings={visibleListings} isSubscribed={isSubscribed} />
-                  {hasMore && (
-                    <div className="text-center mt-10">
-                      <Button size="lg" asChild>
-                        <Link href="/all-properties">View All</Link>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-3xl font-bold text-foreground">
+                        All Properties ({regularListings.length})
+                    </h2>
+                    <div className="flex gap-2">
+                      <Button
+                        variant={viewMode === 'categorized' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setViewMode('categorized')}
+                      >
+                        By Category
+                      </Button>
+                      <Button
+                        variant={viewMode === 'grid' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setViewMode('grid')}
+                      >
+                        All Listings
                       </Button>
                     </div>
+                  </div>
+
+                  {viewMode === 'categorized' ? (
+                    <CategorizedListingGrid
+                      listings={regularListings}
+                      isSubscribed={isSubscribed}
+                      showCategories={filters.type === 'All'}
+                      maxPerCategory={6}
+                    />
+                  ) : (
+                    <>
+                      <ListingGrid listings={visibleListings} isSubscribed={isSubscribed} />
+                      {hasMore && (
+                        <div className="text-center mt-10">
+                          <Button size="lg" asChild>
+                            <Link href="/all-properties">View All</Link>
+                          </Button>
+                        </div>
+                      )}
+                    </>
                   )}
               </div>
             </div>
