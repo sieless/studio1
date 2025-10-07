@@ -65,7 +65,6 @@ export function getFirebaseErrorMessage(error: unknown): string {
     'storage/unauthenticated': 'Please log in to upload files.',
     'storage/retry-limit-exceeded': 'Upload failed after multiple retries.',
     'storage/invalid-checksum': 'File upload failed. Please try again.',
-    'storage/canceled': 'Upload was cancelled.',
   };
 
   return errorMessages[error.code] || `Error: ${error.message}`;

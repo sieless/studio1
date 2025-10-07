@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
-import { MapPin, PlusCircle, Repeat, Loader2, CalendarClock, BarChart3, LayoutGrid } from 'lucide-react';
+import { MapPin, PlusCircle, Repeat, Loader2, CalendarClock, BarChart3, LayoutGrid, Minus, Plus, Building2 } from 'lucide-react';
 import { DeleteListingDialog } from '@/components/delete-listing-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -62,6 +62,7 @@ export default function MyListingsPage() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+  const [updatingUnitsId, setUpdatingUnitsId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   
@@ -173,6 +174,37 @@ export default function MyListingsPage() {
     }
   }
 
+  const handleAdjustUnits = async (listingId: string, adjustment: number, currentAvailable: number, totalUnits: number) => {
+    setUpdatingUnitsId(listingId);
+
+    const newAvailable = Math.max(0, Math.min(totalUnits, currentAvailable + adjustment));
+
+    // Auto-determine status based on availability
+    const newStatus: Listing['status'] = newAvailable > 0 ? 'Vacant' : 'Occupied';
+
+    try {
+      const listingRef = doc(db, 'listings', listingId);
+      await updateDoc(listingRef, {
+        availableUnits: newAvailable,
+        status: newStatus
+      });
+
+      toast({
+        title: 'Units Updated',
+        description: `${newAvailable} of ${totalUnits} units now available. Status: ${newStatus}`,
+      });
+    } catch (error) {
+      console.error('Error updating units:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Update Failed',
+        description: 'Could not update available units. Please try again.',
+      });
+    } finally {
+      setUpdatingUnitsId(null);
+    }
+  };
+
 
   return (
     <>
@@ -252,22 +284,89 @@ export default function MyListingsPage() {
                       {getPropertyIcon(listing.type)} {listing.type}
                     </p>
                   </div>
+                  {/* Multi-unit indicator */}
+                  {listing.totalUnits && listing.totalUnits > 1 && (
+                    <div className="mt-3 pt-3 border-t">
+                      <Badge variant="secondary" className="gap-1">
+                        <Building2 className="h-3 w-3" />
+                        {listing.availableUnits || 0} of {listing.totalUnits} units available
+                      </Badge>
+                    </div>
+                  )}
                 </CardHeader>
-                <CardFooter className="border-t p-4 mt-auto flex items-center gap-2">
-                    <Button 
-                        variant="outline" 
-                        className="w-full"
-                        onClick={() => handleToggleStatus(listing.id, listing.status)}
-                        disabled={updatingStatusId === listing.id}
-                    >
-                      {updatingStatusId === listing.id ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Repeat className="mr-2 h-4 w-4" />
-                      )}
-                       Mark as {getNextStatus(listing.status)}
-                    </Button>
-                    <DeleteListingDialog onConfirm={() => handleDelete(listing.id)} />
+                <CardFooter className="border-t p-4 mt-auto flex flex-col gap-3">
+                  {/* Multi-unit controls */}
+                  {listing.totalUnits && listing.totalUnits > 1 ? (
+                    <div className="flex items-center justify-between w-full gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleAdjustUnits(
+                          listing.id,
+                          -1,
+                          listing.availableUnits || 0,
+                          listing.totalUnits || 1
+                        )}
+                        disabled={
+                          updatingUnitsId === listing.id ||
+                          (listing.availableUnits || 0) <= 0
+                        }
+                      >
+                        {updatingUnitsId === listing.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Minus className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <div className="flex-1 text-center">
+                        <p className="text-sm font-semibold">
+                          {listing.availableUnits || 0} / {listing.totalUnits} available
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {listing.status}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleAdjustUnits(
+                          listing.id,
+                          1,
+                          listing.availableUnits || 0,
+                          listing.totalUnits || 1
+                        )}
+                        disabled={
+                          updatingUnitsId === listing.id ||
+                          (listing.availableUnits || 0) >= listing.totalUnits
+                        }
+                      >
+                        {updatingUnitsId === listing.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Plus className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <DeleteListingDialog onConfirm={() => handleDelete(listing.id)} />
+                    </div>
+                  ) : (
+                    /* Single-unit controls */
+                    <div className="flex items-center gap-2 w-full">
+                      <Button
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => handleToggleStatus(listing.id, listing.status)}
+                          disabled={updatingStatusId === listing.id}
+                      >
+                        {updatingStatusId === listing.id ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Repeat className="mr-2 h-4 w-4" />
+                        )}
+                         Mark as {getNextStatus(listing.status)}
+                      </Button>
+                      <DeleteListingDialog onConfirm={() => handleDelete(listing.id)} />
+                    </div>
+                  )}
                 </CardFooter>
               </Card>
             ))}

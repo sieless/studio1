@@ -16,14 +16,17 @@ type FilterPanelProps = {
     location: string;
     type: string;
     maxPrice: number;
+    status: string;
   };
   onFilterChange: (name: string, value: string | number) => void;
 };
 
+const statusOptions = ['All', 'Vacant', 'Available Soon', 'Occupied'];
+
 export function FilterPanel({ filters, onFilterChange }: FilterPanelProps) {
   return (
     <div className="bg-card p-6 rounded-xl shadow-lg mb-8">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div>
           <Label htmlFor="location" className="block text-sm font-medium text-foreground mb-1">
             Location / Estate
@@ -61,6 +64,27 @@ export function FilterPanel({ filters, onFilterChange }: FilterPanelProps) {
               {houseTypes.map((type) => (
                 <SelectItem key={type} value={type}>
                   {type}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="status" className="block text-sm font-medium text-foreground mb-1">
+            Vacancy Status
+          </Label>
+          <Select
+            name="status"
+            value={filters.status}
+            onValueChange={(value) => onFilterChange("status", value)}
+          >
+            <SelectTrigger id="status" className="w-full">
+              <SelectValue placeholder="Select status" />
+            </SelectTrigger>
+            <SelectContent>
+              {statusOptions.map((status) => (
+                <SelectItem key={status} value={status}>
+                  {status}
                 </SelectItem>
               ))}
             </SelectContent>

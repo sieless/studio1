@@ -14,10 +14,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Home, LogOut, PlusCircle, LayoutGrid, Menu, Info, Mail, LogIn, Shield, Heart } from 'lucide-react';
+import { LogOut, PlusCircle, LayoutGrid, Menu, Info, Mail, LogIn, Shield, Heart } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import { ModeToggle } from './mode-toggle';
 import { isAdmin } from '@/lib/admin';
+import { Logo } from './logo';
 
 type HeaderProps = {
   onPostClick: () => void;
@@ -44,13 +45,8 @@ export function Header({ onPostClick }: HeaderProps) {
   return (
     <header className="bg-card shadow-sm sticky top-0 z-40">
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-3">
-          <div className="bg-primary/10 p-2 rounded-lg">
-            <Home className="h-6 w-6 text-primary" />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground font-headline">
-            Key 2 Rent
-          </h1>
+        <Link href="/">
+          <Logo iconClassName="text-primary" />
         </Link>
         <div className="flex items-center gap-2 sm:gap-4">
           {user && (

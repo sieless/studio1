@@ -67,6 +67,7 @@ export function ListingsView() {
     location: 'All',
     type: 'All',
     maxPrice: 100000,
+    status: 'All',
   });
 
   const db = useFirestore();
@@ -121,7 +122,8 @@ export function ListingsView() {
             filters.location === 'All' || listing.location === filters.location;
         const typeMatch = filters.type === 'All' || listing.type === filters.type;
         const priceMatch = listing.price <= filters.maxPrice;
-        return locationMatch && typeMatch && priceMatch;
+        const statusMatch = filters.status === 'All' || listing.status === filters.status;
+        return locationMatch && typeMatch && priceMatch && statusMatch;
     });
 
     const featured = (filters.location === 'All' && filters.type === 'All') 
