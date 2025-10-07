@@ -3,6 +3,7 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { ThemeProvider } from '@/components/theme-provider';
+import { ErrorBoundary } from '@/components/error-boundary';
 import { Inter } from 'next/font/google';
 
 const inter = Inter({
@@ -12,8 +13,15 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Key 2 Rent',
-  description: 'Simplifying your search for a new home.',
+  title: 'Key-2-Rent | Find Your Perfect Home in Machakos, Kenya',
+  description: 'Discover rental properties in Machakos, Kenya. Browse bedsitters, apartments, houses, and commercial spaces. Connect directly with landlords. Free to search!',
+  keywords: ['Machakos rentals', 'Kenya property', 'houses for rent', 'apartments Machakos', 'bedsitter Kenya', 'rental homes'],
+  authors: [{ name: 'Key-2-Rent' }],
+  openGraph: {
+    title: 'Key-2-Rent - Property Rentals in Machakos',
+    description: 'Find your perfect rental home in Machakos, Kenya',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({
@@ -30,10 +38,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <FirebaseClientProvider>
-            {children}
-          </FirebaseClientProvider>
-          <Toaster />
+          <ErrorBoundary>
+            <FirebaseClientProvider>
+              {children}
+            </FirebaseClientProvider>
+            <Toaster />
+          </ErrorBoundary>
         </ThemeProvider>
       </body>
     </html>

@@ -92,7 +92,7 @@ export default function SignupPage() {
         phone: user.phoneNumber,
         id: user.uid,
         listings: [],
-        canViewContacts: false,
+        canViewContacts: true, // FREE LAUNCH: All users can view contacts
       });
 
       toast({ title: 'Account Created', description: 'You have been successfully signed up.' });
@@ -119,7 +119,7 @@ export default function SignupPage() {
         phone: null,
         id: user.uid,
         listings: [],
-        canViewContacts: false,
+        canViewContacts: true, // FREE LAUNCH: All users can view contacts
       });
 
       toast({ title: 'Account Created', description: 'You have been successfully signed up.' });

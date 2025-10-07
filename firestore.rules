@@ -6,6 +6,7 @@
  * - /users/{userId}: Stores user profiles.
  * - /listings/{listingId}: Stores rental property listings with a denormalized userId field.
  * - /rental_types/{rentalTypeId}: Stores categories of rental options.
+ * - /platformSettings/config: Stores global platform settings (admin-only access).
  *
  * Key Security Decisions:
  * - Users can only read and write their own profiles.
@@ -84,6 +85,27 @@ service cloud.firestore {
     match /rental_types/{rentalTypeId} {
       allow get: if true;
       allow list: if true;
+    }
+
+    /**
+     * @description Manages global platform settings for payment features.
+     * @path /platformSettings/{document}
+     * @allow (read) - Anyone can read platform settings (needed to check if payments enabled)
+     * @allow (write) - Only the admin email can modify settings
+     * @deny (write) - Non-admin users attempting to change settings
+     * @principle Admin-only writes, public reads for feature flags
+     */
+    match /platformSettings/{document} {
+      function isAdmin() {
+        return request.auth != null &&
+               request.auth.token.email == 'titwzmaihya@gmail.com';
+      }
+
+      // Anyone can read settings (clients need to know if payment is required)
+      allow read: if true;
+
+      // Only admin can write
+      allow write: if isAdmin();
     }
   }
 }

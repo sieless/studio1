@@ -1,15 +1,16 @@
 'use client';
 
-import { useState } from "react";
+import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Phone, CalendarClock, MapPin } from "lucide-react";
+import { Phone, CalendarClock, MapPin, Lock, Star, Zap } from "lucide-react";
 import { type Listing } from "@/types";
 import { cn, getPropertyIcon, getStatusClass } from "@/lib/utils";
 import { DefaultPlaceholder } from "./default-placeholder";
+import { useFeatureEnabled } from "@/hooks/use-platform-settings";
 
 
 type ListingCardProps = {
@@ -19,13 +20,9 @@ type ListingCardProps = {
 
 
 export function ListingCard({ listing }: ListingCardProps) {
-  const [showContact, setShowContact] = useState(false);
-
   const hasImages = listing.images && listing.images.length > 0;
-
-  const handleViewContact = () => {
-    setShowContact(true);
-  };
+  const contactPaymentEnabled = useFeatureEnabled('contact');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   return (
     <Card className="overflow-hidden group transform hover:-translate-y-1 transition-all duration-300 hover:shadow-xl flex flex-col h-full">
@@ -45,7 +42,8 @@ export function ListingCard({ listing }: ListingCardProps) {
                 <DefaultPlaceholder type={listing.type} />
               </div>
             )}
-           <Badge
+           {/* Status Badge */}
+            <Badge
               className={cn(
                 "absolute top-3 right-3 text-sm z-10",
                 getStatusClass(listing.status)
@@ -54,6 +52,22 @@ export function ListingCard({ listing }: ListingCardProps) {
               {listing.status === 'Available Soon' && <CalendarClock className="mr-1.5 h-4 w-4" />}
               {listing.status}
             </Badge>
+
+            {/* Featured Badge - shows if listing is featured */}
+            {listing.isFeatured && (
+              <Badge className="absolute top-3 left-3 text-sm z-10 bg-yellow-500 text-black hover:bg-yellow-600">
+                <Star className="mr-1.5 h-4 w-4 fill-current" />
+                Featured
+              </Badge>
+            )}
+
+            {/* Boosted Badge - shows if vacancy is boosted */}
+            {listing.isBoosted && !listing.isFeatured && (
+              <Badge className="absolute top-3 left-3 text-sm z-10 bg-purple-500 hover:bg-purple-600">
+                <Zap className="mr-1.5 h-4 w-4" />
+                Boosted
+              </Badge>
+            )}
             {hasImages && listing.images.length > 1 && (
               <div className="absolute bottom-3 right-3 bg-black/60 text-white text-xs px-2 py-1 rounded-full">
                 {listing.images.length} photos
@@ -100,14 +114,53 @@ export function ListingCard({ listing }: ListingCardProps) {
         </CardContent>
       </Link>
       <CardFooter className="p-5 mt-auto border-t">
-        {showContact ? (
-          <Button asChild variant="secondary" className="w-full text-lg font-bold text-green-600">
-            <a href={`tel:${listing.contact}`}>{listing.contact}</a>
+        {/* FEATURE FLAG: Show payment gate if admin enabled contact payments */}
+        {contactPaymentEnabled ? (
+          <Button
+            onClick={() => setShowPaymentModal(true)}
+            className="w-full"
+            variant="default"
+          >
+            <Lock className="mr-2 h-4 w-4" />
+            Unlock Contact - KES 100
           </Button>
         ) : (
-          <Button onClick={handleViewContact} className="w-full">
-            <Phone className="mr-2 h-4 w-4" /> View Contact
+          // FREE MODE: Show contact directly
+          <Button asChild variant="secondary" className="w-full text-lg font-semibold text-green-600 hover:text-green-700">
+            <a href={`tel:${listing.contact}`}>
+              <Phone className="mr-2 h-4 w-4" />
+              {listing.contact}
+            </a>
           </Button>
+        )}
+
+        {/* Payment Modal - Future: Replace with actual M-Pesa integration */}
+        {showPaymentModal && (
+          <div
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+            onClick={() => setShowPaymentModal(false)}
+          >
+            <div
+              className="bg-background p-6 rounded-lg max-w-md w-full mx-4 border shadow-lg"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-xl font-bold mb-2">Contact Payment</h3>
+              <p className="text-muted-foreground mb-4">
+                Pay KES 100 to unlock this landlord's contact information.
+              </p>
+              <p className="text-sm text-muted-foreground mb-6">
+                🚧 <strong>Coming Soon:</strong> M-Pesa integration will be activated here.
+              </p>
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setShowPaymentModal(false)} className="flex-1">
+                  Cancel
+                </Button>
+                <Button className="flex-1" disabled>
+                  Pay with M-Pesa (Soon)
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
       </CardFooter>
     </Card>

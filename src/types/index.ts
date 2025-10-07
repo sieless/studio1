@@ -16,6 +16,18 @@ export type Listing = {
   contact: string;
   createdAt: Timestamp;
   status: 'Vacant' | 'Occupied' | 'Available Soon';
+
+  // Featured listing fields (activated when admin enables feature)
+  isFeatured?: boolean;              // Is this a featured listing?
+  featuredUntil?: Timestamp;         // Expiration date for featured status
+  featuredPaidAt?: Timestamp;        // When landlord paid for featuring
+  featuredPaidAmount?: number;       // Amount paid (KES)
+
+  // Boosted vacancy fields (activated when admin enables feature)
+  isBoosted?: boolean;               // Is vacancy boosted?
+  boostedUntil?: Timestamp;          // Expiration date for boost
+  boostedPaidAt?: Timestamp;         // When landlord paid for boost
+  boostedPaidAmount?: number;        // Amount paid (KES)
 };
 
 export type ListingFormData = {
@@ -51,3 +63,36 @@ export type AdminStats = {
     recentUsers: number;
     recentListings: number;
 }
+
+/**
+ * Platform-wide settings for payment features
+ * Stored in Firestore at: /platformSettings/config
+ * Allows admin to toggle payment features on/off without code deployment
+ */
+export type PlatformSettings = {
+  // Contact payment settings
+  contactPaymentEnabled: boolean;      // Master switch for contact payment feature
+  contactPaymentAmount: number;        // Price in KES per contact/month
+
+  // Featured listings settings
+  featuredListingsEnabled: boolean;    // Master switch for featured listings
+  featuredListingPrice: number;        // Price in KES per week
+
+  // Boosted vacancy settings
+  boostedVacancyEnabled: boolean;      // Master switch for boosted listings
+  boostedVacancyPrice: number;         // Price in KES per week
+
+  // Metadata
+  lastUpdated: Timestamp;              // When settings were last changed
+  updatedBy: string;                   // Admin email who made the change
+
+  // Revenue tracking (future use)
+  totalRevenue: number;                // Total KES collected
+  paidUsers: number;                   // Count of users who have paid
+  featuredListingsCount: number;       // Count of active featured listings
+}
+
+/**
+ * Helper type for payment feature identifiers
+ */
+export type PaymentFeature = 'contact' | 'featured' | 'boosted';

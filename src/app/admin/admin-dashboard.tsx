@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UsersManagementTable } from './users-table';
 import { ListingsManagementTable } from './listings-table';
-import { Users, Home, TrendingUp, MapPin, Building2, Activity } from 'lucide-react';
+import { PaymentSettingsPanel } from './payment-settings';
+import { Users, Home, TrendingUp, MapPin, Building2, Activity, DollarSign } from 'lucide-react';
 import { type AdminStats } from '@/types';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -210,6 +211,10 @@ export function AdminDashboard() {
             <Home className="mr-2 h-4 w-4" />
             Listings Management
           </TabsTrigger>
+          <TabsTrigger value="payments">
+            <DollarSign className="mr-2 h-4 w-4" />
+            Payment Settings
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="users" className="space-y-4">
@@ -218,6 +223,10 @@ export function AdminDashboard() {
 
         <TabsContent value="listings" className="space-y-4">
           <ListingsManagementTable />
+        </TabsContent>
+
+        <TabsContent value="payments" className="space-y-4">
+          <PaymentSettingsPanel />
         </TabsContent>
       </Tabs>
     </div>

@@ -24,7 +24,10 @@ import {
   Store,
   CalendarClock,
   Briefcase,
-  FileText
+  FileText,
+  Lock,
+  MessageCircle,
+  Share2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Header } from '@/components/header';
@@ -33,6 +36,7 @@ import { AddListingModal } from '@/components/add-listing-modal';
 import { useToast } from '@/hooks/use-toast';
 import { getPropertyIcon, getStatusClass } from '@/lib/utils';
 import { DefaultPlaceholder } from '@/components/default-placeholder';
+import { useFeatureEnabled } from '@/hooks/use-platform-settings';
 
 
 function ListingDetailSkeleton() {
@@ -73,15 +77,44 @@ function ListingDetailSkeleton() {
 
 
 export default function ListingDetailPage() {
-  const [showContact, setShowContact] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+
   const db = useFirestore();
   const params = useParams();
   const router = useRouter();
   const { id } = params;
   const { toast } = useToast();
   const { user, isUserLoading } = useUser();
+  const contactPaymentEnabled = useFeatureEnabled('contact');
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: listing?.name || `${listing?.type} in ${listing?.location}`,
+          text: `Check out this property: KES ${listing?.price.toLocaleString()}/month`,
+          url: url,
+        });
+      } catch (err) {
+        // User cancelled share
+      }
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(url);
+      toast({
+        title: 'Link Copied!',
+        description: 'Share this listing with others',
+      });
+    }
+  };
+
+  const handleWhatsApp = () => {
+    const message = `Hi, I'm interested in your ${listing?.type} in ${listing?.location} listed at KES ${listing?.price.toLocaleString()}/month on Key-2-Rent.`;
+    const whatsappUrl = `https://wa.me/${listing?.contact.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+  };
 
   const listingRef = useMemoFirebase(() => {
     if (typeof id !== 'string') return null;
@@ -102,10 +135,6 @@ export default function ListingDetailPage() {
     } else {
       setIsModalOpen(true);
     }
-  };
-
-  const handleViewContact = () => {
-    setShowContact(true);
   };
   
   if (loading) {
@@ -245,26 +274,53 @@ export default function ListingDetailPage() {
                       </p>
                     )}
                   </div>
-                  <div>
+                  <div className="space-y-3">
                     <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center">
                       <Briefcase className="mr-2 h-5 w-5 text-primary" /> Contact Landlord
                     </h3>
-                    {showContact ? (
+                    {/* FEATURE FLAG: Show payment gate if admin enabled contact payments */}
+                    {contactPaymentEnabled ? (
                       <Button
-                        asChild
-                        variant="secondary"
-                        className="w-full text-lg font-bold"
+                        onClick={() => setShowPaymentModal(true)}
+                        className="w-full text-lg"
+                        variant="default"
                       >
-                        <a href={`tel:${listing.contact}`}>{listing.contact}</a>
+                        <Lock className="mr-2 h-5 w-5" />
+                        Unlock Contact - KES 100
                       </Button>
                     ) : (
-                      <Button
-                        onClick={handleViewContact}
-                        className="w-full"
-                      >
-                        <Phone className="mr-2 h-4 w-4" /> View Contact Number
-                      </Button>
+                      // FREE MODE: Show contact directly with WhatsApp option
+                      <div className="space-y-2">
+                        <Button
+                          asChild
+                          variant="secondary"
+                          className="w-full text-lg font-semibold text-green-600 hover:text-green-700"
+                        >
+                          <a href={`tel:${listing.contact}`}>
+                            <Phone className="mr-2 h-5 w-5" />
+                            {listing.contact}
+                          </a>
+                        </Button>
+                        <Button
+                          onClick={handleWhatsApp}
+                          variant="outline"
+                          className="w-full"
+                        >
+                          <MessageCircle className="mr-2 h-4 w-4" />
+                          Message on WhatsApp
+                        </Button>
+                      </div>
                     )}
+
+                    {/* Share Button */}
+                    <Button
+                      onClick={handleShare}
+                      variant="ghost"
+                      className="w-full"
+                    >
+                      <Share2 className="mr-2 h-4 w-4" />
+                      Share Listing
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -278,6 +334,35 @@ export default function ListingDetailPage() {
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
         />
+      )}
+
+      {/* Payment Modal - Future: Replace with actual M-Pesa integration */}
+      {showPaymentModal && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setShowPaymentModal(false)}
+        >
+          <div
+            className="bg-background p-8 rounded-lg max-w-md w-full mx-4 border shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-2xl font-bold mb-3">Contact Payment</h3>
+            <p className="text-muted-foreground mb-4">
+              Pay KES 100 to unlock this landlord's contact information and connect directly.
+            </p>
+            <p className="text-sm text-muted-foreground mb-6 p-3 bg-muted rounded">
+              🚧 <strong>Coming Soon:</strong> M-Pesa STK Push integration will be activated here. You'll receive a prompt on your phone to complete the payment.
+            </p>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setShowPaymentModal(false)} className="flex-1">
+                Cancel
+              </Button>
+              <Button className="flex-1" disabled>
+                Pay with M-Pesa (Soon)
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
