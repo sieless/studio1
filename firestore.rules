@@ -38,11 +38,16 @@ service cloud.firestore {
         return request.auth != null && request.auth.uid == userId;
       }
 
-      allow get: if isOwner(userId);
-      allow list: if false;
+      function isAdmin() {
+        return request.auth != null &&
+               request.auth.token.email == 'titwzmaihya@gmail.com';
+      }
+
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin(); // Admin can list all users for dashboard
       allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isOwner(userId);
+      allow update: if isOwner(userId) || isAdmin(); // Admin can update (e.g., suspend users)
+      allow delete: if isOwner(userId) || isAdmin(); // Admin can delete users
     }
 
     /**
@@ -69,15 +74,20 @@ service cloud.firestore {
         return request.auth.uid == resource.data.userId;
       }
 
+      function isAdmin() {
+        return request.auth != null &&
+               request.auth.token.email == 'titwzmaihya@gmail.com';
+      }
+
       allow get: if true;
       allow list: if true;
       allow create: if isSignedIn() &&
         request.resource.data.userId == request.auth.uid &&
         request.resource.data.keys().hasAll(['type', 'location', 'price', 'contact', 'status', 'userId', 'createdAt', 'images']);
-      allow update: if isSignedIn() &&
+      allow update: if (isSignedIn() &&
         resource.data.userId == request.auth.uid &&
-        request.resource.data.userId == resource.data.userId; // Prevent ownership transfer
-      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+        request.resource.data.userId == resource.data.userId) || isAdmin(); // Admin can update any listing
+      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin(); // Admin can delete any listing
     }
 
     /**

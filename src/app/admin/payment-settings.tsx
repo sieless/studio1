@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -47,7 +47,7 @@ export function PaymentSettingsPanel() {
   const { toast } = useToast();
 
   // Update local price state when settings load
-  useState(() => {
+  useEffect(() => {
     if (settings) {
       setPrices({
         contact: settings.contactPaymentAmount,
@@ -55,7 +55,7 @@ export function PaymentSettingsPanel() {
         boosted: settings.boostedVacancyPrice,
       });
     }
-  });
+  }, [settings]);
 
   if (!user || !isAdmin(user.email)) {
     return (
