@@ -17,6 +17,10 @@ export type Listing = {
   createdAt: Timestamp;
   status: 'Vacant' | 'Occupied' | 'Available Soon';
 
+  // Multi-unit support
+  totalUnits?: number;               // Total units in property (default: 1)
+  availableUnits?: number;           // How many units are currently available
+
   // Featured listing fields (activated when admin enables feature)
   isFeatured?: boolean;              // Is this a featured listing?
   featuredUntil?: Timestamp;         // Expiration date for featured status
@@ -42,6 +46,8 @@ export type ListingFormData = {
   images: File[];
   features: string[];
   status: 'Vacant' | 'Occupied' | 'Available Soon';
+  totalUnits?: number | '';
+  availableUnits?: number | '';
 }
 
 export type UserProfile = {

@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import Image from 'next/image';
-import { MapPin, PlusCircle, Repeat, Loader2, CalendarClock } from 'lucide-react';
+import { MapPin, PlusCircle, Repeat, Loader2, CalendarClock, BarChart3, LayoutGrid } from 'lucide-react';
 import { DeleteListingDialog } from '@/components/delete-listing-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -36,6 +36,8 @@ import { cn } from '@/lib/utils';
 import { AddListingModal } from '@/components/add-listing-modal';
 import { getPropertyIcon, getStatusClass } from '@/lib/utils';
 import { DefaultPlaceholder } from '@/components/default-placeholder';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { LandlordAnalytics } from './analytics';
 
 function ListingSkeleton() {
   return (
@@ -184,13 +186,26 @@ export default function MyListingsPage() {
           </Button>
         </div>
 
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <ListingSkeleton key={i} />
-            ))}
-          </div>
-        ) : listings.length > 0 ? (
+        <Tabs defaultValue="listings" className="w-full">
+          <TabsList className="mb-6">
+            <TabsTrigger value="listings">
+              <LayoutGrid className="mr-2 h-4 w-4" />
+              Listings
+            </TabsTrigger>
+            <TabsTrigger value="analytics">
+              <BarChart3 className="mr-2 h-4 w-4" />
+              Analytics
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="listings">
+            {loading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <ListingSkeleton key={i} />
+                ))}
+              </div>
+            ) : listings.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {listings.map(listing => (
               <Card key={listing.id} className="overflow-hidden flex flex-col h-full">
@@ -257,19 +272,25 @@ export default function MyListingsPage() {
               </Card>
             ))}
           </div>
-        ) : (
-          <div className="text-center py-20 bg-card rounded-xl border border-dashed">
-            <h2 className="text-xl font-semibold text-foreground">
-              You haven&apos;t posted any listings yet.
-            </h2>
-            <p className="text-muted-foreground mt-2">
-              Click the button below to add your first property!
-            </p>
-            <Button onClick={() => setIsModalOpen(true)} className="mt-6">
-                <PlusCircle className="mr-2 h-4 w-4" /> Post a Listing
-            </Button>
-          </div>
-        )}
+            ) : (
+              <div className="text-center py-20 bg-card rounded-xl border border-dashed">
+                <h2 className="text-xl font-semibold text-foreground">
+                  You haven&apos;t posted any listings yet.
+                </h2>
+                <p className="text-muted-foreground mt-2">
+                  Click the button below to add your first property!
+                </p>
+                <Button onClick={() => setIsModalOpen(true)} className="mt-6">
+                    <PlusCircle className="mr-2 h-4 w-4" /> Post a Listing
+                </Button>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="analytics">
+            <LandlordAnalytics listings={listings} />
+          </TabsContent>
+        </Tabs>
       </main>
       <Footer />
        {isModalOpen && (

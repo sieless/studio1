@@ -28,13 +28,13 @@ export const getSubscriptionFee = (type: string) => {
 export const getStatusClass = (status: Listing['status']) => {
     switch (status) {
       case 'Vacant':
-        return 'bg-green-500 text-white';
+        return 'bg-green-500 text-white hover:bg-green-600';
       case 'Occupied':
-        return 'bg-yellow-500 text-white';
+        return 'bg-red-500 text-white hover:bg-red-600';
       case 'Available Soon':
-        return 'bg-blue-500 text-white';
+        return 'bg-orange-500 text-white hover:bg-orange-600';
       default:
-        return 'bg-gray-500 text-white';
+        return 'bg-gray-500 text-white hover:bg-gray-600';
     }
 };
 

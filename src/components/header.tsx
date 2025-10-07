@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Home, LogOut, PlusCircle, LayoutGrid, Menu, Info, Mail, LogIn, Shield } from 'lucide-react';
+import { Home, LogOut, PlusCircle, LayoutGrid, Menu, Info, Mail, LogIn, Shield, Heart } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import { ModeToggle } from './mode-toggle';
 import { isAdmin } from '@/lib/admin';
@@ -118,6 +118,12 @@ export function Header({ onPostClick }: HeaderProps) {
                     <span>My Listings</span>
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                   <Link href="/favorites">
+                    <Heart className="mr-2 h-4 w-4" />
+                    <span>Saved Listings</span>
+                  </Link>
+                </DropdownMenuItem>
                 {isAdmin(user.email) && (
                   <>
                     <DropdownMenuSeparator />
@@ -152,10 +158,18 @@ export function Header({ onPostClick }: HeaderProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                  {user && (
-                    <DropdownMenuItem onClick={onPostClick}>
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      <span>Post Listing</span>
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem onClick={onPostClick}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        <span>Post Listing</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/favorites">
+                          <Heart className="mr-2 h-4 w-4" />
+                          <span>Saved Listings</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
                  )}
                  {!user && !isUserLoading && (
                    <DropdownMenuItem asChild>

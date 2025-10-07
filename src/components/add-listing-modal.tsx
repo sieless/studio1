@@ -70,6 +70,8 @@ const listingSchema = z.object({
   status: z.enum(['Vacant', 'Occupied', 'Available Soon'], {
     required_error: 'You need to select a status.',
   }),
+  totalUnits: z.coerce.number().min(1).optional().or(z.literal('')),
+  availableUnits: z.coerce.number().min(0).optional().or(z.literal('')),
 });
 
 type AddListingModalProps = {
@@ -109,6 +111,8 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
       depositMonths: '',
       businessTerms: '',
       status: 'Vacant',
+      totalUnits: 1,
+      availableUnits: 1,
     },
   });
   
@@ -179,7 +183,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
       if (!listingPayload.name) delete listingPayload.name;
       if (!listingPayload.businessTerms) delete listingPayload.businessTerms;
       
-      const fieldsToProcessAsNumbers = ['price', 'deposit', 'depositMonths'];
+      const fieldsToProcessAsNumbers = ['price', 'deposit', 'depositMonths', 'totalUnits', 'availableUnits'];
       fieldsToProcessAsNumbers.forEach(field => {
         if (listingPayload[field] === '' || listingPayload[field] === undefined || isNaN(listingPayload[field])) {
             delete listingPayload[field];
@@ -477,6 +481,51 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                     </FormItem>
                   )}
                 />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="totalUnits"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Total Units (Optional)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="1"
+                            min="1"
+                            {...field}
+                          />
+                        </FormControl>
+                        <p className="text-xs text-muted-foreground">
+                          For multi-unit properties (apartments, hostels). Leave as 1 for single units.
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="availableUnits"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Available Units (Optional)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="1"
+                            min="0"
+                            {...field}
+                          />
+                        </FormControl>
+                        <p className="text-xs text-muted-foreground">
+                          How many units are currently available for rent?
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
 
                 <FormField
                   control={form.control}

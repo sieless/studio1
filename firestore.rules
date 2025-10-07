@@ -54,6 +54,11 @@ service cloud.firestore {
      * @deny (create) - Authenticated user creating a listing with a mismatched userId.
      * @deny (update, delete) - Non-owner attempting to update or delete a listing.
      * @principle Enforces document ownership for writes, allows public reads for listings.
+     *
+     * @fields Required: type, location, price, contact, status, userId, createdAt, images
+     * @fields Optional: name, deposit, depositMonths, businessTerms, features, totalUnits, availableUnits
+     * @fields Optional (admin-managed): isFeatured, featuredUntil, featuredPaidAt, featuredPaidAmount,
+     *                                   isBoosted, boostedUntil, boostedPaidAt, boostedPaidAmount
      */
     match /listings/{listingId} {
       function isSignedIn() {
@@ -68,7 +73,7 @@ service cloud.firestore {
       allow list: if true;
       allow create: if isSignedIn() &&
         request.resource.data.userId == request.auth.uid &&
-        request.resource.data.keys().hasAll(['type', 'location', 'price', 'contact', 'status', 'userId', 'createdAt']);
+        request.resource.data.keys().hasAll(['type', 'location', 'price', 'contact', 'status', 'userId', 'createdAt', 'images']);
       allow update: if isSignedIn() &&
         resource.data.userId == request.auth.uid &&
         request.resource.data.userId == resource.data.userId; // Prevent ownership transfer

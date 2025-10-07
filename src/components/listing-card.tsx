@@ -6,11 +6,13 @@ import Link from 'next/link';
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Phone, CalendarClock, MapPin, Lock, Star, Zap } from "lucide-react";
+import { Phone, CalendarClock, MapPin, Lock, Star, Zap, Heart, Building2 } from "lucide-react";
 import { type Listing } from "@/types";
 import { cn, getPropertyIcon, getStatusClass } from "@/lib/utils";
 import { DefaultPlaceholder } from "./default-placeholder";
 import { useFeatureEnabled } from "@/hooks/use-platform-settings";
+import { useListingFavorite } from "@/hooks/use-favorites";
+import { useToast } from "@/hooks/use-toast";
 
 
 type ListingCardProps = {
@@ -23,6 +25,18 @@ export function ListingCard({ listing }: ListingCardProps) {
   const hasImages = listing.images && listing.images.length > 0;
   const contactPaymentEnabled = useFeatureEnabled('contact');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const { isFavorited, toggle: toggleFavorite } = useListingFavorite(listing.id);
+  const { toast } = useToast();
+
+  const handleFavoriteClick = (e: React.MouseEvent) => {
+    e.preventDefault(); // Prevent navigation to listing detail
+    e.stopPropagation();
+    toggleFavorite();
+    toast({
+      title: isFavorited ? 'Removed from favorites' : 'Added to favorites',
+      description: isFavorited ? 'Listing removed from your saved items' : 'View your saved listings anytime',
+    });
+  };
 
   return (
     <Card className="overflow-hidden group transform hover:-translate-y-1 transition-all duration-300 hover:shadow-xl flex flex-col h-full">
@@ -53,6 +67,14 @@ export function ListingCard({ listing }: ListingCardProps) {
               {listing.status}
             </Badge>
 
+            {/* Multi-unit Badge - shows availability for multi-unit properties */}
+            {listing.totalUnits && listing.totalUnits > 1 && (
+              <Badge className="absolute top-14 right-3 text-xs z-10 bg-blue-600 text-white hover:bg-blue-700">
+                <Building2 className="mr-1 h-3 w-3" />
+                {listing.availableUnits || 0} of {listing.totalUnits} available
+              </Badge>
+            )}
+
             {/* Featured Badge - shows if listing is featured */}
             {listing.isFeatured && (
               <Badge className="absolute top-3 left-3 text-sm z-10 bg-yellow-500 text-black hover:bg-yellow-600">
@@ -73,6 +95,20 @@ export function ListingCard({ listing }: ListingCardProps) {
                 {listing.images.length} photos
               </div>
             )}
+
+            {/* Favorite Button */}
+            <button
+              onClick={handleFavoriteClick}
+              className="absolute bottom-3 left-3 bg-white/90 hover:bg-white p-2 rounded-full shadow-lg transition-all z-10"
+              aria-label={isFavorited ? "Remove from favorites" : "Add to favorites"}
+            >
+              <Heart
+                className={cn(
+                  "h-5 w-5 transition-colors",
+                  isFavorited ? "fill-red-500 text-red-500" : "text-gray-600"
+                )}
+              />
+            </button>
         </div>
         <CardContent className="p-5 flex flex-col flex-grow">
           <div className="flex items-center justify-between mb-3 text-sm text-muted-foreground">
