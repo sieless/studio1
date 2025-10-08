@@ -1,6 +1,6 @@
 'use client';
 
-import { firebaseConfig } from '@/firebase/config';
+import { firebaseConfig, validateFirebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore'
@@ -12,6 +12,9 @@ export function initializeFirebase() {
     console.log('[initializeFirebase] Current apps count:', getApps().length);
 
     if (!getApps().length) {
+      // Validate configuration before initializing
+      validateFirebaseConfig();
+
       // Always use firebaseConfig for consistent initialization
       // This prevents the "no-options" error in production
       console.log('[initializeFirebase] Initializing new Firebase app with config:', {
