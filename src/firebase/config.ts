@@ -1,10 +1,30 @@
 // Firebase configuration with fallback values for production
-export const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyDXDbd7n6pATyZnvEosKMWseWA8fg1mnU8",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "studio-8585842935-1485a.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "studio-8585842935-1485a",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "studio-8585842935-1485a.appspot.com",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "183517980169",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:183517980169:web:7a35cafdec76d857553ad8",
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "",
-};
+// Use a getter function to ensure this runs client-side only
+export function getFirebaseConfig() {
+  // Only access process.env if we're in the browser
+  if (typeof window === 'undefined') {
+    // Server-side: return minimal config (won't be used)
+    return {
+      apiKey: "AIzaSyDXDbd7n6pATyZnvEosKMWseWA8fg1mnU8",
+      authDomain: "studio-8585842935-1485a.firebaseapp.com",
+      projectId: "studio-8585842935-1485a",
+      storageBucket: "studio-8585842935-1485a.appspot.com",
+      messagingSenderId: "183517980169",
+      appId: "1:183517980169:web:7a35cafdec76d857553ad8",
+      measurementId: "",
+    };
+  }
+
+  // Client-side: use env vars with fallbacks
+  return {
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyDXDbd7n6pATyZnvEosKMWseWA8fg1mnU8",
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "studio-8585842935-1485a.firebaseapp.com",
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "studio-8585842935-1485a",
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "studio-8585842935-1485a.appspot.com",
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "183517980169",
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:183517980169:web:7a35cafdec76d857553ad8",
+    measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "",
+  };
+}
+
+export const firebaseConfig = getFirebaseConfig();
