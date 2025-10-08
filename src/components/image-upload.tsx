@@ -6,6 +6,13 @@ import { X, UploadCloud, GripVertical, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import {
+  validateImageFile,
+  validateMultipleFiles,
+  verifyImageHeader,
+  stripImageMetadata,
+} from '@/lib/security/file-validator';
+import { logUploadError } from '@/lib/error-logger';
 
 interface ImageUploadProps {
   images: string[]; // Array of Cloudinary URLs
@@ -45,36 +52,59 @@ export function ImageUpload({
       });
     }
 
+    // Validate all files before uploading
+    const validation = validateMultipleFiles(filesToUpload, 'image');
+    if (!validation.isValid) {
+      toast({
+        title: 'Invalid files',
+        description: validation.errors[0],
+        variant: 'destructive',
+      });
+      logUploadError(validation.errors.join(', '));
+      return;
+    }
+
     setUploading(true);
     setUploadProgress(0);
 
     try {
       const uploadPromises = filesToUpload.map(async (file, index) => {
-        // Validate file type
-        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-        if (!allowedTypes.includes(file.type)) {
+        // Validate individual file
+        const fileValidation = validateImageFile(file);
+        if (!fileValidation.isValid) {
           toast({
-            title: 'Invalid file type',
-            description: `${file.name} is not a valid image format`,
+            title: 'Invalid file',
+            description: `${file.name}: ${fileValidation.errors[0]}`,
             variant: 'destructive',
           });
+          logUploadError(fileValidation.errors.join(', '), file.name, file.size);
           return null;
         }
 
-        // Validate file size (5MB max)
-        const maxSize = 5 * 1024 * 1024;
-        if (file.size > maxSize) {
+        // Verify file header to ensure it's actually an image
+        const isValidImage = await verifyImageHeader(file);
+        if (!isValidImage) {
           toast({
-            title: 'File too large',
-            description: `${file.name} exceeds 5MB limit`,
+            title: 'Invalid image',
+            description: `${file.name} is not a valid image file`,
             variant: 'destructive',
           });
+          logUploadError('Invalid image header', file.name, file.size);
           return null;
+        }
+
+        // Strip EXIF metadata for privacy
+        let processedFile = file;
+        try {
+          processedFile = await stripImageMetadata(file);
+        } catch (error) {
+          // If metadata stripping fails, continue with original file
+          console.warn('Failed to strip metadata, using original file:', error);
         }
 
         // Upload to Cloudinary
         const formData = new FormData();
-        formData.append('image', file);
+        formData.append('image', processedFile);
 
         const response = await fetch('/api/upload-image', {
           method: 'POST',
@@ -106,6 +136,7 @@ export function ImageUpload({
       }
     } catch (error: any) {
       console.error('Upload error:', error);
+      logUploadError(error, undefined, undefined);
       toast({
         title: 'Upload failed',
         description: error.message || 'Failed to upload images. Please try again.',

@@ -19,6 +19,13 @@ import { Loader2, Save, AlertCircle, CheckCircle, User, Mail, Phone, MapPin, Loc
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { kenyanCounties } from '@/lib/constants';
+import {
+  validatePassword,
+  getStrengthColor,
+  getStrengthLabel,
+  type PasswordValidationResult,
+} from '@/lib/security/password-validator';
+import { logPasswordChange } from '@/lib/security/audit-logger';
 
 interface ProfileFormData {
   name: string;
@@ -50,6 +57,17 @@ export default function EditProfilePage() {
   });
 
   const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordValidation, setPasswordValidation] = useState<PasswordValidationResult | null>(null);
+
+  // Validate password whenever it changes
+  useEffect(() => {
+    if (passwordData.newPassword) {
+      const validation = validatePassword(passwordData.newPassword);
+      setPasswordValidation(validation);
+    } else {
+      setPasswordValidation(null);
+    }
+  }, [passwordData.newPassword]);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -167,10 +185,11 @@ export default function EditProfilePage() {
       return;
     }
 
-    if (passwordData.newPassword.length < 8) {
+    // Validate password strength
+    if (!passwordValidation?.isValid) {
       toast({
-        title: 'Password too short',
-        description: 'Password must be at least 8 characters long',
+        title: 'Password requirements not met',
+        description: passwordValidation?.errors[0] || 'Please use a stronger password',
         variant: 'destructive',
       });
       return;
@@ -189,6 +208,9 @@ export default function EditProfilePage() {
 
       // Update password
       await updatePassword(user, passwordData.newPassword);
+
+      // Log password change for security audit
+      await logPasswordChange(user.uid, user.email || '');
 
       toast({
         title: 'Password updated',
@@ -381,6 +403,37 @@ export default function EditProfilePage() {
                 onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
                 placeholder="Enter new password"
               />
+              {passwordValidation && passwordData.newPassword && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Password Strength:</span>
+                    <span className={`text-sm font-medium ${getStrengthColor(passwordValidation.strength)}`}>
+                      {getStrengthLabel(passwordValidation.strength)}
+                    </span>
+                  </div>
+                  <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-300 ${
+                        passwordValidation.strength === 'WEAK'
+                          ? 'bg-red-500'
+                          : passwordValidation.strength === 'MEDIUM'
+                          ? 'bg-yellow-500'
+                          : passwordValidation.strength === 'STRONG'
+                          ? 'bg-blue-500'
+                          : 'bg-green-500'
+                      }`}
+                      style={{ width: `${(passwordValidation.score / 7) * 100}%` }}
+                    />
+                  </div>
+                  {!passwordValidation.isValid && (
+                    <ul className="text-xs text-red-500 space-y-1 mt-2">
+                      {passwordValidation.errors.map((error, index) => (
+                        <li key={index}>• {error}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">

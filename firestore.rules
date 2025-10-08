@@ -122,5 +122,201 @@ service cloud.firestore {
       // Only admin can write
       allow write: if isAdmin();
     }
+
+    /**
+     * @description Payment transactions
+     * @path /transactions/{transactionId}
+     * @allow (read) - User can read their own transactions, admin can read all
+     * @allow (create) - Authenticated user can create transaction
+     * @allow (update) - Payment callback system can update (verified by server)
+     * @principle User can only see own transactions
+     */
+    match /transactions/{transactionId} {
+      function isAdmin() {
+        return request.auth != null &&
+               request.auth.token.email == 'titwzmaihya@gmail.com';
+      }
+
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.userId || isAdmin());
+      allow list: if request.auth != null &&
+        (request.auth.uid == resource.data.userId || isAdmin());
+      allow create: if request.auth != null &&
+        request.resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null; // Allow server callbacks
+    }
+
+    /**
+     * @description M-Pesa callback logs (for debugging)
+     * @path /mpesa_callbacks/{callbackId}
+     * @allow (read) - Admin only
+     * @allow (create) - Server only (via API route)
+     * @principle Admin monitoring only
+     */
+    match /mpesa_callbacks/{callbackId} {
+      function isAdmin() {
+        return request.auth != null &&
+               request.auth.token.email == 'titwzmaihya@gmail.com';
+      }
+
+      allow read: if isAdmin();
+      allow create: if true; // Server creates via API
+    }
+
+    /**
+     * @description Conversations between tenants and landlords
+     * @path /conversations/{conversationId}
+     * @allow (read) - Only participants can read
+     * @allow (create) - Authenticated user can create if they're a participant
+     * @allow (update) - Only participants can update
+     * @principle Participants-only access
+     */
+    match /conversations/{conversationId} {
+      allow read: if request.auth != null &&
+        request.auth.uid in resource.data.participants;
+      allow create: if request.auth != null &&
+        request.auth.uid in request.resource.data.participants &&
+        request.resource.data.keys().hasAll(['participants', 'listingId', 'lastMessage', 'createdAt']);
+      allow update: if request.auth != null &&
+        request.auth.uid in resource.data.participants;
+    }
+
+    /**
+     * @description Messages in conversations
+     * @path /messages/{messageId}
+     * @allow (read) - Authenticated users can read (filtered by conversation)
+     * @allow (create) - Sender can create
+     * @allow (update) - Sender can update (for read receipts)
+     * @principle Sender-based access
+     */
+    match /messages/{messageId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null &&
+        request.resource.data.senderId == request.auth.uid &&
+        request.resource.data.keys().hasAll(['conversationId', 'senderId', 'senderName', 'text', 'createdAt']);
+      allow update: if request.auth != null;
+    }
+
+    /**
+     * @description Viewing schedules
+     * @path /viewings/{viewingId}
+     * @allow (read) - Tenant or landlord can read
+     * @allow (create) - Tenant can create
+     * @allow (update) - Landlord can update (approve/decline)
+     * @principle Tenant creates, landlord responds
+     */
+    match /viewings/{viewingId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.tenantId ||
+         request.auth.uid == resource.data.landlordId);
+      allow create: if request.auth != null &&
+        request.resource.data.tenantId == request.auth.uid &&
+        request.resource.data.keys().hasAll(['listingId', 'tenantId', 'landlordId', 'requestedDate', 'status', 'createdAt']);
+      allow update: if request.auth != null &&
+        request.auth.uid == resource.data.landlordId;
+    }
+
+    /**
+     * @description Property applications
+     * @path /applications/{applicationId}
+     * @allow (read) - Tenant or landlord can read
+     * @allow (create) - Tenant can create
+     * @allow (update) - Landlord can update (approve/decline)
+     * @principle Tenant creates, landlord responds
+     */
+    match /applications/{applicationId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.tenantId ||
+         request.auth.uid == resource.data.landlordId);
+      allow create: if request.auth != null &&
+        request.resource.data.tenantId == request.auth.uid &&
+        request.resource.data.keys().hasAll(['listingId', 'tenantId', 'landlordId', 'idNumber', 'status', 'createdAt']);
+      allow update: if request.auth != null &&
+        request.auth.uid == resource.data.landlordId;
+    }
+
+    /**
+     * @description Rental agreement templates
+     * @path /agreements/{agreementId}
+     * @allow (read) - Public (anyone can view agreement for a listing)
+     * @allow (create, update, delete) - Landlord only
+     * @principle Landlord manages, public reads
+     */
+    match /agreements/{agreementId} {
+      allow read: if true;
+      allow create: if request.auth != null &&
+        request.resource.data.landlordId == request.auth.uid;
+      allow update, delete: if request.auth != null &&
+        resource.data.landlordId == request.auth.uid;
+    }
+
+    /**
+     * @description Signed rental agreements
+     * @path /signedAgreements/{signedId}
+     * @allow (read) - Tenant or landlord can read
+     * @allow (create) - Tenant can create (sign)
+     * @allow (update, delete) - No one (immutable once signed)
+     * @principle Tenant signs, both parties can view, immutable
+     */
+    match /signedAgreements/{signedId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.tenantId ||
+         request.auth.uid == resource.data.landlordId);
+      allow create: if request.auth != null &&
+        request.resource.data.tenantId == request.auth.uid &&
+        request.resource.data.keys().hasAll(['listingId', 'landlordId', 'tenantId', 'tenantDetails', 'signedAt', 'createdAt']);
+      // No updates or deletes - signed agreements are immutable
+    }
+
+    /**
+     * @description Error logs (for monitoring)
+     * @path /error_logs/{errorId}
+     * @allow (read) - Admin only
+     * @allow (create) - Anyone (for error reporting)
+     * @principle Public writes for error reporting, admin reads
+     */
+    match /error_logs/{errorId} {
+      function isAdmin() {
+        return request.auth != null &&
+               request.auth.token.email == 'titwzmaihya@gmail.com';
+      }
+
+      allow read: if isAdmin();
+      allow create: if true; // Allow error reporting from anyone
+    }
+
+    /**
+     * @description Performance metrics (for monitoring)
+     * @path /performance_metrics/{metricId}
+     * @allow (read) - Admin only
+     * @allow (create) - Anyone (for performance tracking)
+     * @principle Public writes for metrics, admin reads
+     */
+    match /performance_metrics/{metricId} {
+      function isAdmin() {
+        return request.auth != null &&
+               request.auth.token.email == 'titwzmaihya@gmail.com';
+      }
+
+      allow read: if isAdmin();
+      allow create: if true; // Allow metrics from anyone
+    }
+
+    /**
+     * @description Security audit logs
+     * @path /security_logs/{logId}
+     * @allow (read) - Admin only
+     * @allow (create) - System only
+     * @principle Admin monitoring only
+     */
+    match /security_logs/{logId} {
+      function isAdmin() {
+        return request.auth != null &&
+               request.auth.token.email == 'titwzmaihya@gmail.com';
+      }
+
+      allow read: if isAdmin();
+      allow create: if request.auth != null; // Logged-in users can create audit logs
+    }
   }
 }

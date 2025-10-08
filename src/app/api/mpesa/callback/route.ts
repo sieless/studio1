@@ -8,6 +8,10 @@ import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, query, where, getDocs, doc, updateDoc, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { firebaseConfig } from '@/firebase/config';
 import type { TransactionType } from '@/types';
+import { rateLimiter, RATE_LIMITS } from '@/lib/security/rate-limiter';
+import { getClientIP } from '@/lib/security/api-security';
+import { logPaymentAttempt } from '@/lib/security/audit-logger';
+import { logPaymentError } from '@/lib/error-logger';
 
 // Initialize Firebase for server-side operations
 const app = initializeApp(firebaseConfig, 'mpesa-callback');
@@ -109,6 +113,19 @@ async function updateUserPermissions(
 
 export async function POST(request: NextRequest) {
   try {
+    // Apply rate limiting (50 requests per minute for callback endpoint)
+    const clientIP = getClientIP(request);
+    const rateLimitKey = `mpesa-callback:${clientIP}`;
+    const allowed = rateLimiter.check(rateLimitKey, 50, 60 * 1000);
+
+    if (!allowed) {
+      console.warn(`Rate limit exceeded for M-Pesa callback from IP: ${clientIP}`);
+      return NextResponse.json(
+        { ResultCode: 1, ResultDesc: 'Rate limit exceeded' },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
 
     // Log all callbacks for debugging
@@ -172,6 +189,28 @@ export async function POST(request: NextRequest) {
         totalRevenue: (transaction.amount || 0),
         lastUpdated: serverTimestamp(),
       });
+
+      // Log successful payment
+      await logPaymentAttempt(
+        transaction.userId,
+        transaction.amount,
+        true,
+        CheckoutRequestID
+      );
+    } else {
+      // Log failed payment
+      await logPaymentAttempt(
+        transaction.userId,
+        transaction.amount,
+        false,
+        CheckoutRequestID
+      );
+
+      await logPaymentError(
+        new Error(`Payment failed: ${ResultDesc}`),
+        transaction.userId,
+        CheckoutRequestID
+      );
     }
 
     // Update transaction status

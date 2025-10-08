@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Phone, CalendarClock, MapPin, Lock, Star, Zap, Heart, Building2 } from "lucide-react";
+import { Phone, CalendarClock, MapPin, Lock, Star, Zap, Heart, Building2, MessageCircle } from "lucide-react";
 import { type Listing } from "@/types";
 import { cn, getPropertyIcon, getStatusClass } from "@/lib/utils";
 import { DefaultPlaceholder } from "./default-placeholder";
@@ -17,6 +17,7 @@ import { PaymentModal } from "@/components/payment-modal";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/firebase";
 import { useRouter } from "next/navigation";
+import { useStartConversation } from "@/hooks/use-start-conversation";
 
 
 type ListingCardProps = {
@@ -34,6 +35,7 @@ export function ListingCard({ listing }: ListingCardProps) {
   const { user } = useUser();
   const router = useRouter();
   const paymentStatus = usePaymentStatus();
+  const { startConversation, loading: startingConversation } = useStartConversation();
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.preventDefault(); // Prevent navigation to listing detail
@@ -197,58 +199,80 @@ export function ListingCard({ listing }: ListingCardProps) {
         </CardContent>
       </Link>
       <CardFooter className="p-5 mt-auto border-t">
-        {/* FEATURE FLAG: Show payment gate if admin enabled contact payments */}
-        {contactPaymentEnabled ? (
-          <>
-            {paymentStatus.loading ? (
-              <Button disabled className="w-full">
-                <Phone className="mr-2 h-4 w-4 animate-pulse" />
-                Loading...
-              </Button>
-            ) : paymentStatus.canViewContacts && !paymentStatus.needsRenewal ? (
-              // User has active subscription
+        <div className="w-full space-y-2">
+          {/* Contact Button */}
+          <div className="flex gap-2">
+            {/* FEATURE FLAG: Show payment gate if admin enabled contact payments */}
+            {contactPaymentEnabled ? (
+              <>
+                {paymentStatus.loading ? (
+                  <Button disabled className="flex-1">
+                    <Phone className="mr-2 h-4 w-4 animate-pulse" />
+                    Loading...
+                  </Button>
+                ) : paymentStatus.canViewContacts && !paymentStatus.needsRenewal ? (
+                  // User has active subscription
+                  <Button
+                    onClick={handleContactClick}
+                    variant="secondary"
+                    className="flex-1 text-lg font-semibold text-green-600 hover:text-green-700"
+                  >
+                    <Phone className="mr-2 h-4 w-4" />
+                    {listing.contact}
+                  </Button>
+                ) : (
+                  // User needs to pay
+                  <Button
+                    onClick={handleContactClick}
+                    className="flex-1"
+                    variant="default"
+                  >
+                    <Lock className="mr-2 h-4 w-4" />
+                    Unlock Contact - KES 100
+                  </Button>
+                )}
+              </>
+            ) : (
+              // FREE MODE: Show contact directly
               <Button
                 onClick={handleContactClick}
                 variant="secondary"
-                className="w-full text-lg font-semibold text-green-600 hover:text-green-700"
+                className="flex-1 text-lg font-semibold text-green-600 hover:text-green-700"
               >
                 <Phone className="mr-2 h-4 w-4" />
                 {listing.contact}
               </Button>
-            ) : (
-              // User needs to pay
+            )}
+
+            {/* Message Button */}
+            {user && user.uid !== listing.userId && (
               <Button
-                onClick={handleContactClick}
-                className="w-full"
-                variant="default"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  startConversation(listing);
+                }}
+                variant="outline"
+                size="icon"
+                disabled={startingConversation}
+                title="Message Landlord"
               >
-                <Lock className="mr-2 h-4 w-4" />
-                Unlock Contact - KES 100
+                <MessageCircle className="h-4 w-4" />
               </Button>
             )}
-          </>
-        ) : (
-          // FREE MODE: Show contact directly
-          <Button
-            onClick={handleContactClick}
-            variant="secondary"
-            className="w-full text-lg font-semibold text-green-600 hover:text-green-700"
-          >
-            <Phone className="mr-2 h-4 w-4" />
-            {listing.contact}
-          </Button>
-        )}
+          </div>
 
-        {/* M-Pesa Payment Modal */}
-        <PaymentModal
-          open={showPaymentModal}
-          onOpenChange={setShowPaymentModal}
-          amount={100}
-          type="CONTACT_ACCESS"
-          onSuccess={handlePaymentSuccess}
-          title="Unlock Contact Access"
-          description="Get unlimited access to all landlord contacts for 30 days"
-        />
+          {/* M-Pesa Payment Modal */}
+          <PaymentModal
+            open={showPaymentModal}
+            onOpenChange={setShowPaymentModal}
+            amount={100}
+            type="CONTACT_ACCESS"
+            onSuccess={handlePaymentSuccess}
+            title="Unlock Contact Access"
+            description="Get unlimited access to all landlord contacts for 30 days"
+          />
+        </div>
       </CardFooter>
     </Card>
   );

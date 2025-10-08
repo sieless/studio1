@@ -163,3 +163,145 @@ export type UserProfileWithPayments = UserProfile & {
  * Helper type for payment feature identifiers
  */
 export type PaymentFeature = 'contact' | 'featured' | 'boosted';
+
+/**
+ * PHASE 4: MESSAGING SYSTEM
+ * Conversation between tenant and landlord
+ * Stored in Firestore at: /conversations/{conversationId}
+ */
+export type Conversation = {
+  id: string;                          // Firestore document ID
+  participants: string[];              // Array of user IDs [tenantId, landlordId]
+  listingId: string;                   // Related listing
+  listingTitle?: string;               // Listing name/type for display
+  lastMessage: string;                 // Preview text
+  lastMessageAt: Timestamp;            // For sorting
+  unreadCount: Record<string, number>; // { userId: count }
+  createdAt: Timestamp;
+};
+
+/**
+ * Message in a conversation
+ * Stored in Firestore at: /messages/{messageId}
+ */
+export type Message = {
+  id: string;                          // Firestore document ID
+  conversationId: string;              // Parent conversation
+  senderId: string;                    // User who sent message
+  senderName: string;                  // For display
+  text: string;                        // Message content
+  imageUrl?: string;                   // Optional image attachment
+  read: boolean;                       // Read status
+  createdAt: Timestamp;
+};
+
+/**
+ * Viewing Schedule Request
+ * Stored in Firestore at: /viewings/{viewingId}
+ */
+export type ViewingSchedule = {
+  id: string;
+  listingId: string;
+  listingTitle?: string;
+  tenantId: string;
+  tenantName: string;
+  tenantEmail: string;
+  tenantPhone: string;
+  landlordId: string;
+  landlordName: string;
+  requestedDate: Timestamp;            // Tenant's preferred date/time
+  alternateDate?: Timestamp;           // Landlord's suggested alternate
+  status: 'PENDING' | 'APPROVED' | 'DECLINED' | 'COMPLETED' | 'CANCELLED';
+  notes?: string;                      // Additional notes
+  declineReason?: string;              // If declined
+  createdAt: Timestamp;
+  updatedAt?: Timestamp;
+};
+
+/**
+ * Property Application
+ * Stored in Firestore at: /applications/{applicationId}
+ */
+export type PropertyApplication = {
+  id: string;
+  listingId: string;
+  listingTitle?: string;
+  listingPrice: number;
+  tenantId: string;
+  tenantName: string;
+  tenantEmail: string;
+  tenantPhone: string;
+  landlordId: string;
+
+  // Application details
+  idNumber: string;                    // National ID
+  employment: {
+    status: 'EMPLOYED' | 'SELF_EMPLOYED' | 'STUDENT' | 'OTHER';
+    employer?: string;
+    position?: string;
+    monthlyIncome?: number;
+  };
+  references: Array<{
+    name: string;
+    relationship: string;
+    phone: string;
+  }>;
+  moveInDate: Timestamp;
+  additionalInfo?: string;
+
+  // Status
+  status: 'PENDING' | 'APPROVED' | 'DECLINED';
+  declineReason?: string;
+  approvedAt?: Timestamp;
+
+  createdAt: Timestamp;
+  updatedAt?: Timestamp;
+};
+
+/**
+ * PHASE 5: RENTAL AGREEMENT SYSTEM
+ * Rental agreement template (uploaded by landlord)
+ * Stored in Firestore at: /agreements/{agreementId}
+ */
+export type RentalAgreement = {
+  id: string;
+  listingId: string;
+  landlordId: string;
+  templateUrl: string;                 // PDF/DOC URL in storage
+  templateName: string;
+  uploadedAt: Timestamp;
+};
+
+/**
+ * Signed rental agreement
+ * Stored in Firestore at: /signedAgreements/{signedAgreementId}
+ */
+export type SignedAgreement = {
+  id: string;
+  listingId: string;
+  listingTitle?: string;
+  listingPrice: number;
+
+  // Parties
+  landlordId: string;
+  landlordName: string;
+  tenantId: string;
+  tenantName: string;
+
+  // Tenant details from signature
+  tenantDetails: {
+    fullName: string;
+    idNumber: string;
+    phone: string;
+    email: string;
+    signatureUrl: string;              // Signature image URL
+  };
+
+  // Agreement details
+  originalAgreementUrl: string;        // Original template
+  signedAgreementUrl: string;          // PDF with signature
+
+  // Timestamps
+  signedAt: Timestamp;
+  createdAt: Timestamp;
+};
