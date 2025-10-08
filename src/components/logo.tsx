@@ -8,8 +8,8 @@ interface LogoProps {
 }
 
 // Cloudinary logo URL
-const LOGO_URL = 'https://res.cloudinary.com/droibarvx/image/upload/v1/key2rent/logo';
-const ICON_URL = 'https://res.cloudinary.com/droibarvx/image/upload/v1/key2rent/logo-icon';
+const LOGO_URL = 'https://res.cloudinary.com/droibarvx/image/upload/v1/key2rent/logo.png';
+const ICON_URL = 'https://res.cloudinary.com/droibarvx/image/upload/v1/key2rent/logo-icon.png';
 
 /**
  * Key2Rent Logo Component
