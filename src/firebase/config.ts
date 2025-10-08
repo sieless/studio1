@@ -1,4 +1,5 @@
-export const firebaseConfig = {
+// Firebase configuration with fallback values for production
+const config = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyDXDbd7n6pATyZnvEosKMWseWA8fg1mnU8",
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "studio-8585842935-1485a.firebaseapp.com",
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "studio-8585842935-1485a",
@@ -7,3 +8,23 @@ export const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:183517980169:web:7a35cafdec76d857553ad8",
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || "",
 };
+
+// Validate that required fields are present
+function validateFirebaseConfig() {
+  const requiredFields = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
+  const missingFields = requiredFields.filter(field => !config[field as keyof typeof config]);
+
+  if (missingFields.length > 0) {
+    console.error('[Firebase Config] Missing required fields:', missingFields);
+    throw new Error(`Firebase configuration is invalid. Missing: ${missingFields.join(', ')}`);
+  }
+
+  console.log('[Firebase Config] Configuration validated successfully');
+}
+
+// Run validation
+if (typeof window !== 'undefined') {
+  validateFirebaseConfig();
+}
+
+export const firebaseConfig = config;
