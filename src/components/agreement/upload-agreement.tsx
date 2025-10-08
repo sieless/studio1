@@ -7,9 +7,7 @@
 
 import { useState, useRef } from 'react';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useFirestore, useUser } from '@/firebase';
-import { storage } from '@/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,10 +66,20 @@ export function UploadAgreement({ listing, onUploadComplete }: UploadAgreementPr
     setUploading(true);
 
     try {
-      // Upload file to Firebase Storage
-      const storageRef = ref(storage, `agreements/${listing.id}/${Date.now()}-${file.name}`);
-      const snapshot = await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(snapshot.ref);
+      // Upload file to Cloudinary
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const uploadResponse = await fetch('/api/upload-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload agreement');
+      }
+
+      const { url: downloadURL } = await uploadResponse.json();
 
       // Save agreement record to Firestore
       await addDoc(collection(db, 'agreements'), {

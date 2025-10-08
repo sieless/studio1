@@ -30,7 +30,6 @@ import { Send, Image as ImageIcon, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Message, Conversation } from '@/types';
-import { uploadImage } from '@/firebase/storage';
 
 interface ChatProps {
   conversationId: string;
@@ -190,8 +189,20 @@ export function Chat({ conversationId, onBack }: ChatProps) {
     setUploading(true);
 
     try {
-      // Upload image to storage
-      const imageUrl = await uploadImage(file, `messages/${conversationId}`);
+      // Upload image to Cloudinary
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const uploadResponse = await fetch('/api/upload-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload image');
+      }
+
+      const { url: imageUrl } = await uploadResponse.json();
 
       // Send message with image
       const messageData: Omit<Message, 'id'> = {

@@ -7,9 +7,7 @@
 
 import { useState } from 'react';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { useFirestore, useUser } from '@/firebase';
-import { storage } from '@/firebase';
 import {
   Dialog,
   DialogContent,
@@ -46,7 +44,7 @@ export function SignAgreementModal({
   const db = useFirestore();
   const { toast } = useToast();
 
-  const [formData, setFormData] = useState({
+  const [tenantFormData, setTenantFormData] = useState({
     fullName: user?.displayName || '',
     idNumber: '',
     phone: '',
@@ -80,13 +78,24 @@ export function SignAgreementModal({
     setSubmitting(true);
 
     try {
-      // Upload signature image
-      const signatureRef = ref(
-        storage,
-        `signatures/${listing.id}/${user.uid}-${Date.now()}.png`
-      );
-      await uploadString(signatureRef, signatureDataUrl, 'data_url');
-      const signatureUrl = await getDownloadURL(signatureRef);
+      // Convert data URL to blob
+      const response = await fetch(signatureDataUrl);
+      const blob = await response.blob();
+
+      // Upload signature image to Cloudinary
+      const formData = new FormData();
+      formData.append('image', blob, 'signature.png');
+
+      const uploadResponse = await fetch('/api/upload-image', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload signature');
+      }
+
+      const { url: signatureUrl } = await uploadResponse.json();
 
       // Create signed agreement record
       const signedAgreementData = {
@@ -96,12 +105,12 @@ export function SignAgreementModal({
         landlordId: listing.userId,
         landlordName: landlordName || 'Landlord',
         tenantId: user.uid,
-        tenantName: formData.fullName,
+        tenantName: tenantFormData.fullName,
         tenantDetails: {
-          fullName: formData.fullName,
-          idNumber: formData.idNumber,
-          phone: formData.phone,
-          email: formData.email,
+          fullName: tenantFormData.fullName,
+          idNumber: tenantFormData.idNumber,
+          phone: tenantFormData.phone,
+          email: tenantFormData.email,
           signatureUrl,
         },
         originalAgreementUrl: agreementUrl,
@@ -188,8 +197,8 @@ export function SignAgreementModal({
                   <Label htmlFor="fullName">Full Legal Name *</Label>
                   <Input
                     id="fullName"
-                    value={formData.fullName}
-                    onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
+                    value={tenantFormData.fullName}
+                    onChange={(e) => setTenantFormData(prev => ({ ...prev, fullName: e.target.value }))}
                     required
                   />
                 </div>
@@ -198,8 +207,8 @@ export function SignAgreementModal({
                   <Label htmlFor="idNumber">National ID *</Label>
                   <Input
                     id="idNumber"
-                    value={formData.idNumber}
-                    onChange={(e) => setFormData(prev => ({ ...prev, idNumber: e.target.value }))}
+                    value={tenantFormData.idNumber}
+                    onChange={(e) => setTenantFormData(prev => ({ ...prev, idNumber: e.target.value }))}
                     required
                   />
                 </div>
@@ -212,8 +221,8 @@ export function SignAgreementModal({
                     id="phone"
                     type="tel"
                     placeholder="254712345678"
-                    value={formData.phone}
-                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                    value={tenantFormData.phone}
+                    onChange={(e) => setTenantFormData(prev => ({ ...prev, phone: e.target.value }))}
                     required
                   />
                 </div>
@@ -223,8 +232,8 @@ export function SignAgreementModal({
                   <Input
                     id="email"
                     type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                    value={tenantFormData.email}
+                    onChange={(e) => setTenantFormData(prev => ({ ...prev, email: e.target.value }))}
                     required
                   />
                 </div>
