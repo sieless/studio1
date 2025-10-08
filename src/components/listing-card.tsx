@@ -10,9 +10,13 @@ import { Phone, CalendarClock, MapPin, Lock, Star, Zap, Heart, Building2 } from 
 import { type Listing } from "@/types";
 import { cn, getPropertyIcon, getStatusClass } from "@/lib/utils";
 import { DefaultPlaceholder } from "./default-placeholder";
-import { useFeatureEnabled } from "@/hooks/use-platform-settings";
+import { useFeatureEnabled, usePlatformSettings } from "@/hooks/use-platform-settings";
 import { useListingFavorite } from "@/hooks/use-favorites";
+import { usePaymentStatus } from "@/hooks/use-payment-status";
+import { PaymentModal } from "@/components/payment-modal";
 import { useToast } from "@/hooks/use-toast";
+import { useUser } from "@/firebase";
+import { useRouter } from "next/navigation";
 
 
 type ListingCardProps = {
@@ -27,6 +31,9 @@ export function ListingCard({ listing }: ListingCardProps) {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const { isFavorited, toggle: toggleFavorite } = useListingFavorite(listing.id);
   const { toast } = useToast();
+  const { user } = useUser();
+  const router = useRouter();
+  const paymentStatus = usePaymentStatus();
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.preventDefault(); // Prevent navigation to listing detail
@@ -36,6 +43,46 @@ export function ListingCard({ listing }: ListingCardProps) {
       title: isFavorited ? 'Removed from favorites' : 'Added to favorites',
       description: isFavorited ? 'Listing removed from your saved items' : 'View your saved listings anytime',
     });
+  };
+
+  const handleContactClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Check if user is logged in
+    if (!user) {
+      toast({
+        title: 'Sign in required',
+        description: 'Please sign in to view contact information',
+        variant: 'destructive',
+      });
+      router.push('/signup');
+      return;
+    }
+
+    // If contact payment is enabled, check payment status
+    if (contactPaymentEnabled) {
+      if (paymentStatus.canViewContacts && !paymentStatus.needsRenewal) {
+        // User has active subscription, show contact directly
+        window.location.href = `tel:${listing.contact}`;
+      } else {
+        // User needs to pay or renew
+        setShowPaymentModal(true);
+      }
+    } else {
+      // Free mode, show contact directly
+      window.location.href = `tel:${listing.contact}`;
+    }
+  };
+
+  const handlePaymentSuccess = () => {
+    toast({
+      title: 'Payment successful!',
+      description: 'You can now view all landlord contacts for 30 days',
+    });
+    setShowPaymentModal(false);
+    // Refresh payment status
+    window.location.reload();
   };
 
   return (
@@ -152,52 +199,56 @@ export function ListingCard({ listing }: ListingCardProps) {
       <CardFooter className="p-5 mt-auto border-t">
         {/* FEATURE FLAG: Show payment gate if admin enabled contact payments */}
         {contactPaymentEnabled ? (
-          <Button
-            onClick={() => setShowPaymentModal(true)}
-            className="w-full"
-            variant="default"
-          >
-            <Lock className="mr-2 h-4 w-4" />
-            Unlock Contact - KES 100
-          </Button>
+          <>
+            {paymentStatus.loading ? (
+              <Button disabled className="w-full">
+                <Phone className="mr-2 h-4 w-4 animate-pulse" />
+                Loading...
+              </Button>
+            ) : paymentStatus.canViewContacts && !paymentStatus.needsRenewal ? (
+              // User has active subscription
+              <Button
+                onClick={handleContactClick}
+                variant="secondary"
+                className="w-full text-lg font-semibold text-green-600 hover:text-green-700"
+              >
+                <Phone className="mr-2 h-4 w-4" />
+                {listing.contact}
+              </Button>
+            ) : (
+              // User needs to pay
+              <Button
+                onClick={handleContactClick}
+                className="w-full"
+                variant="default"
+              >
+                <Lock className="mr-2 h-4 w-4" />
+                Unlock Contact - KES 100
+              </Button>
+            )}
+          </>
         ) : (
           // FREE MODE: Show contact directly
-          <Button asChild variant="secondary" className="w-full text-lg font-semibold text-green-600 hover:text-green-700">
-            <a href={`tel:${listing.contact}`}>
-              <Phone className="mr-2 h-4 w-4" />
-              {listing.contact}
-            </a>
+          <Button
+            onClick={handleContactClick}
+            variant="secondary"
+            className="w-full text-lg font-semibold text-green-600 hover:text-green-700"
+          >
+            <Phone className="mr-2 h-4 w-4" />
+            {listing.contact}
           </Button>
         )}
 
-        {/* Payment Modal - Future: Replace with actual M-Pesa integration */}
-        {showPaymentModal && (
-          <div
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-            onClick={() => setShowPaymentModal(false)}
-          >
-            <div
-              className="bg-background p-6 rounded-lg max-w-md w-full mx-4 border shadow-lg"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="text-xl font-bold mb-2">Contact Payment</h3>
-              <p className="text-muted-foreground mb-4">
-                Pay KES 100 to unlock this landlord's contact information.
-              </p>
-              <p className="text-sm text-muted-foreground mb-6">
-                🚧 <strong>Coming Soon:</strong> M-Pesa integration will be activated here.
-              </p>
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setShowPaymentModal(false)} className="flex-1">
-                  Cancel
-                </Button>
-                <Button className="flex-1" disabled>
-                  Pay with M-Pesa (Soon)
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* M-Pesa Payment Modal */}
+        <PaymentModal
+          open={showPaymentModal}
+          onOpenChange={setShowPaymentModal}
+          amount={100}
+          type="CONTACT_ACCESS"
+          onSuccess={handlePaymentSuccess}
+          title="Unlock Contact Access"
+          description="Get unlimited access to all landlord contacts for 30 days"
+        />
       </CardFooter>
     </Card>
   );

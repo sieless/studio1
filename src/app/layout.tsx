@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 import { ThemeProvider } from '@/components/theme-provider';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { InactivityWarningDialog } from '@/components/inactivity-warning-dialog';
 import { Inter } from 'next/font/google';
 
 const inter = Inter({
@@ -41,6 +42,7 @@ export default function RootLayout({
           <ErrorBoundary>
             <FirebaseClientProvider>
               {children}
+              <InactivityWarningDialog />
             </FirebaseClientProvider>
             <Toaster />
           </ErrorBoundary>

@@ -99,6 +99,67 @@ export type PlatformSettings = {
 }
 
 /**
+ * Transaction types
+ */
+export type TransactionType = 'CONTACT_ACCESS' | 'VACANCY_LISTING' | 'FEATURED_LISTING' | 'BOOSTED_LISTING';
+export type TransactionStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'CANCELLED';
+
+/**
+ * Payment transaction record
+ * Stored in Firestore at: /transactions/{transactionId}
+ */
+export type Transaction = {
+  id: string;                          // Firestore document ID
+  transactionId: string;               // Unique transaction ID
+  userId: string;                      // User who initiated payment
+  userEmail?: string;                  // User email for reference
+  userName?: string;                   // User name for reference
+
+  // Transaction details
+  type: TransactionType;               // Purpose of payment
+  amount: number;                      // Amount in KES
+  phoneNumber: string;                 // Phone number used for payment (254...)
+
+  // M-Pesa details
+  checkoutRequestID?: string;          // M-Pesa checkout request ID
+  merchantRequestID?: string;          // M-Pesa merchant request ID
+  mpesaReceiptNumber?: string;         // M-Pesa receipt (e.g., QGR1234ABC)
+
+  // Status
+  status: TransactionStatus;           // Current status
+  statusMessage?: string;              // Status description
+
+  // Related entity
+  listingId?: string;                  // If related to a listing
+
+  // Timestamps
+  createdAt: Timestamp;                // When transaction was created
+  updatedAt?: Timestamp;               // Last update time
+  completedAt?: Timestamp;             // When payment completed/failed
+  expiresAt?: Timestamp;               // For subscriptions (e.g., contact access)
+
+  // Metadata
+  ipAddress?: string;                  // User's IP for security
+  userAgent?: string;                  // Browser info for security
+  metadata?: Record<string, any>;      // Additional data
+}
+
+/**
+ * Extended UserProfile with payment features
+ */
+export type UserProfileWithPayments = UserProfile & {
+  // Contact access subscription
+  contactAccessExpiresAt?: Timestamp;  // When contact access expires
+  lastContactPaymentDate?: Timestamp;  // Last payment for contacts
+  totalContactPayments?: number;       // Total spent on contact access
+
+  // Transaction history
+  totalTransactions?: number;          // Count of all transactions
+  totalSpent?: number;                 // Total KES spent
+  lastTransactionDate?: Timestamp;     // Most recent transaction
+}
+
+/**
  * Helper type for payment feature identifiers
  */
 export type PaymentFeature = 'contact' | 'featured' | 'boosted';
