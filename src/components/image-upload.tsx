@@ -2,19 +2,21 @@
 
 import { ChangeEvent, DragEvent, useState } from 'react';
 import Image from 'next/image';
-import { X, UploadCloud, GripVertical } from 'lucide-react';
+import { X, UploadCloud, GripVertical, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface ImageUploadProps {
-  images: File[];
-  onChange: (images: File[]) => void;
+  images: string[]; // Array of Cloudinary URLs
+  onChange: (images: string[]) => void;
   maxImages?: number;
   className?: string;
 }
 
 /**
- * Image upload component with preview grid, drag & drop, and reordering
+ * Image upload component with Cloudinary integration
+ * Uploads images immediately when selected and stores URLs
  */
 export function ImageUpload({
   images,
@@ -24,15 +26,96 @@ export function ImageUpload({
 }: ImageUploadProps) {
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const { toast } = useToast();
 
-  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files) {
-      const files = Array.from(event.target.files);
-      const newFiles = files.filter(
-        (file) => !images.some((existing) => existing.name === file.name)
-      );
-      const combined = [...images, ...newFiles].slice(0, maxImages);
-      onChange(combined);
+  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) return;
+
+    const files = Array.from(event.target.files);
+    const remainingSlots = maxImages - images.length;
+    const filesToUpload = files.slice(0, remainingSlots);
+
+    if (files.length > remainingSlots) {
+      toast({
+        title: 'Too many images',
+        description: `You can only upload ${remainingSlots} more image(s)`,
+        variant: 'destructive',
+      });
+    }
+
+    setUploading(true);
+    setUploadProgress(0);
+
+    try {
+      const uploadPromises = filesToUpload.map(async (file, index) => {
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+          toast({
+            title: 'Invalid file type',
+            description: `${file.name} is not a valid image format`,
+            variant: 'destructive',
+          });
+          return null;
+        }
+
+        // Validate file size (5MB max)
+        const maxSize = 5 * 1024 * 1024;
+        if (file.size > maxSize) {
+          toast({
+            title: 'File too large',
+            description: `${file.name} exceeds 5MB limit`,
+            variant: 'destructive',
+          });
+          return null;
+        }
+
+        // Upload to Cloudinary
+        const formData = new FormData();
+        formData.append('image', file);
+
+        const response = await fetch('/api/upload-image', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Upload failed');
+        }
+
+        const data = await response.json();
+
+        // Update progress
+        setUploadProgress(((index + 1) / filesToUpload.length) * 100);
+
+        return data.url;
+      });
+
+      const uploadedUrls = await Promise.all(uploadPromises);
+      const validUrls = uploadedUrls.filter((url): url is string => url !== null);
+
+      if (validUrls.length > 0) {
+        onChange([...images, ...validUrls]);
+        toast({
+          title: 'Success',
+          description: `${validUrls.length} image(s) uploaded successfully`,
+        });
+      }
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      toast({
+        title: 'Upload failed',
+        description: error.message || 'Failed to upload images. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+      // Reset input
+      event.target.value = '';
     }
   };
 
@@ -72,9 +155,9 @@ export function ImageUpload({
   return (
     <div className={cn('space-y-2', className)}>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-        {images.map((file, index) => (
+        {images.map((url, index) => (
           <div
-            key={`${file.name}-${index}`}
+            key={`${url}-${index}`}
             draggable
             onDragStart={() => handleDragStart(index)}
             onDragOver={(e) => handleDragOver(e, index)}
@@ -88,7 +171,7 @@ export function ImageUpload({
             )}
           >
             <Image
-              src={URL.createObjectURL(file)}
+              src={url}
               alt={`Preview ${index + 1}`}
               fill
               className="object-cover"
@@ -122,15 +205,32 @@ export function ImageUpload({
         {images.length < maxImages && (
           <label
             htmlFor="image-upload"
-            className="flex flex-col items-center justify-center aspect-square rounded-md border-2 border-dashed border-input bg-transparent cursor-pointer hover:bg-accent hover:border-primary transition-all"
+            className={cn(
+              'flex flex-col items-center justify-center aspect-square rounded-md border-2 border-dashed border-input bg-transparent cursor-pointer hover:bg-accent hover:border-primary transition-all',
+              uploading && 'opacity-50 cursor-not-allowed'
+            )}
           >
-            <UploadCloud className="h-8 w-8 text-muted-foreground" />
-            <span className="mt-2 text-sm text-center text-muted-foreground px-2">
-              Add photos
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {images.length}/{maxImages}
-            </span>
+            {uploading ? (
+              <>
+                <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                <span className="mt-2 text-sm text-center text-muted-foreground px-2">
+                  Uploading...
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {Math.round(uploadProgress)}%
+                </span>
+              </>
+            ) : (
+              <>
+                <UploadCloud className="h-8 w-8 text-muted-foreground" />
+                <span className="mt-2 text-sm text-center text-muted-foreground px-2">
+                  Add photos
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {images.length}/{maxImages}
+                </span>
+              </>
+            )}
           </label>
         )}
 
@@ -138,9 +238,10 @@ export function ImageUpload({
           id="image-upload"
           type="file"
           className="sr-only"
-          accept="image/*"
+          accept="image/jpeg,image/jpg,image/png,image/webp"
           multiple
           onChange={handleFileChange}
+          disabled={uploading || images.length >= maxImages}
         />
       </div>
 
@@ -148,6 +249,15 @@ export function ImageUpload({
         <p className="text-xs text-muted-foreground">
           Drag images to reorder. First image will be the cover photo.
         </p>
+      )}
+
+      {uploading && (
+        <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
+          <div
+            className="bg-primary h-full transition-all duration-300"
+            style={{ width: `${uploadProgress}%` }}
+          />
+        </div>
       )}
     </div>
   );

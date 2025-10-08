@@ -13,7 +13,6 @@ import {
   arrayUnion,
 } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
-import { uploadImage } from '@/firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { analyzeListingImage } from '@/app/actions';
 import { ImageUpload } from '@/components/image-upload';
@@ -64,8 +63,8 @@ const listingSchema = z.object({
   businessTerms: z.string().optional(),
   contact: z.string().min(10, 'A valid contact number is required.'),
   images: z
-    .any()
-    .refine(files => files?.length >= 1, 'At least one image is required.'),
+    .array(z.string())
+    .min(1, 'At least one image is required.'),
   features: z.array(z.string()).optional(),
   status: z.enum(['Vacant', 'Occupied', 'Available Soon'], {
     required_error: 'You need to select a status.',
@@ -129,33 +128,25 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
   }, [selectedType, form]);
 
 
-  const imageFiles = form.watch('images') || [];
+  const imageUrls = form.watch('images') || [];
 
 
-  const handleAnalyzeImage = async (imageFile: File, index: number) => {
+  const handleAnalyzeImage = async (imageUrl: string, index: number) => {
     setAnalysisError(null);
     setAnalysisResult(null);
     setAnalyzedImageIndex(index);
 
-    const reader = new FileReader();
-    reader.readAsDataURL(imageFile);
-    reader.onload = () => {
-      const dataUri = reader.result as string;
-      const formData = new FormData();
-      formData.append('image', dataUri);
+    const formData = new FormData();
+    formData.append('image', imageUrl);
 
-      startTransition(async () => {
-        const result = await analyzeListingImage(formData);
-        if (result.error) {
-          setAnalysisError(result.error);
-        } else if (result.analysis) {
-          setAnalysisResult(result.analysis);
-        }
-      });
-    };
-    reader.onerror = () => {
-      setAnalysisError('Could not read the image file.');
-    };
+    startTransition(async () => {
+      const result = await analyzeListingImage(formData);
+      if (result.error) {
+        setAnalysisError(result.error);
+      } else if (result.analysis) {
+        setAnalysisResult(result.analysis);
+      }
+    });
   };
 
   const onSubmit = async (data: ListingData) => {
@@ -167,22 +158,19 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
       });
       return;
     }
-    
+
     setIsSubmitting(true);
 
     try {
-      const { images: imageFiles, ...restOfData } = data;
-      
       const listingPayload: any = {
-        ...restOfData,
+        ...data,
         userId: user.uid,
         createdAt: serverTimestamp(),
-        images: [],
       };
 
       if (!listingPayload.name) delete listingPayload.name;
       if (!listingPayload.businessTerms) delete listingPayload.businessTerms;
-      
+
       const fieldsToProcessAsNumbers = ['price', 'deposit', 'depositMonths', 'totalUnits', 'availableUnits'];
       fieldsToProcessAsNumbers.forEach(field => {
         if (listingPayload[field] === '' || listingPayload[field] === undefined || isNaN(listingPayload[field])) {
@@ -194,25 +182,12 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
 
       const docRef = await addDoc(collection(db, 'listings'), listingPayload);
 
-      const uploadPromises = imageFiles.map((file: File) =>
-        uploadImage(file, user.uid, docRef.id, progress => {
-          console.log(`Image ${file.name} upload is ${progress}% done`);
-        })
-      );
-
-      Promise.all(uploadPromises).then(imageUrls => {
-        updateDocumentNonBlocking(doc(db, 'listings', docRef.id), { images: imageUrls });
-      }).catch(error => {
-        console.error("One or more image uploads failed:", error);
-      });
-      
       const userRef = doc(db, 'users', user.uid);
       updateDocumentNonBlocking(userRef, { listings: arrayUnion(docRef.id) });
 
       toast({
         title: 'Success!',
-        description:
-          'Your listing has been created. Images will appear shortly.',
+        description: 'Your listing has been created successfully!',
       });
 
       form.reset();
@@ -541,13 +516,13 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                         />
                       </FormControl>
                       <FormMessage />
-                      {imageFiles.length > 0 && (
+                      {imageUrls.length > 0 && (
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
                           className="mt-2"
-                          onClick={() => handleAnalyzeImage(imageFiles[0], 0)}
+                          onClick={() => handleAnalyzeImage(imageUrls[0], 0)}
                           disabled={isAnalyzing}
                         >
                           {isAnalyzing ? (
