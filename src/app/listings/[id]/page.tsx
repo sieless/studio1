@@ -279,7 +279,18 @@ export default function ListingDetailPage() {
                       <Briefcase className="mr-2 h-5 w-5 text-primary" /> Contact Landlord
                     </h3>
                     {/* FEATURE FLAG: Show payment gate if admin enabled contact payments */}
-                    {contactPaymentEnabled ? (
+                    {!user ? (
+                      // Not logged in - prompt to sign in
+                      <Button
+                        onClick={() => router.push('/signup')}
+                        className="w-full text-lg"
+                        variant="default"
+                      >
+                        <Phone className="mr-2 h-5 w-5" />
+                        Sign in to view contact
+                      </Button>
+                    ) : contactPaymentEnabled ? (
+                      // Logged in but contact payment is enabled
                       <Button
                         onClick={() => setShowPaymentModal(true)}
                         className="w-full text-lg"
@@ -289,7 +300,7 @@ export default function ListingDetailPage() {
                         Unlock Contact - KES 100
                       </Button>
                     ) : (
-                      // FREE MODE: Show contact directly with WhatsApp option
+                      // Logged in and FREE MODE: Show contact directly with WhatsApp option
                       <div className="space-y-2">
                         <Button
                           asChild

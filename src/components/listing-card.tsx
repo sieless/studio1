@@ -218,7 +218,7 @@ export function ListingCard({ listing }: ListingCardProps) {
                     className="flex-1 text-lg font-semibold text-green-600 hover:text-green-700"
                   >
                     <Phone className="mr-2 h-4 w-4" />
-                    {listing.contact}
+                    {user ? listing.contact : 'Sign in to view'}
                   </Button>
                 ) : (
                   // User needs to pay
@@ -228,19 +228,19 @@ export function ListingCard({ listing }: ListingCardProps) {
                     variant="default"
                   >
                     <Lock className="mr-2 h-4 w-4" />
-                    Unlock Contact - KES 100
+                    {user ? 'Unlock Contact - KES 100' : 'Sign in to view'}
                   </Button>
                 )}
               </>
             ) : (
-              // FREE MODE: Show contact directly
+              // FREE MODE: Only show contact if logged in
               <Button
                 onClick={handleContactClick}
                 variant="secondary"
                 className="flex-1 text-lg font-semibold text-green-600 hover:text-green-700"
               >
                 <Phone className="mr-2 h-4 w-4" />
-                {listing.contact}
+                {user ? listing.contact : 'Sign in to view contact'}
               </Button>
             )}
 
