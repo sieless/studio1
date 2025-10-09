@@ -57,6 +57,8 @@ firestore-debug.log
 
 # Sensitive documentation with credentials
 VERCEL_SETUP.md
+GIT_HISTORY_CLEANUP.md
+CREDENTIAL_ROTATION.md
 
 # Vim swap files
 *.swp
