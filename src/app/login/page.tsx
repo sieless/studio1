@@ -1,5 +1,8 @@
 'use client';
 
+// Force dynamic rendering (disable static generation)
+export const dynamic = 'force-dynamic';
+
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -35,6 +38,7 @@ export default function LoginPage() {
   const { toast } = useToast();
 
   const generateRecaptcha = () => {
+    if (!auth) return;
     if (!window.recaptchaVerifier) {
       window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
         'size': 'invisible',
@@ -47,6 +51,7 @@ export default function LoginPage() {
 
   const handlePhoneSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!auth) return;
     setIsLoading(true);
     if (phone.length >= 10) {
       generateRecaptcha();
@@ -82,6 +87,7 @@ export default function LoginPage() {
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!auth) return;
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
@@ -98,6 +104,7 @@ export default function LoginPage() {
   };
 
   const handleGitHubSignIn = async () => {
+    if (!auth) return;
     setIsLoading(true);
     try {
       const provider = new GithubAuthProvider();

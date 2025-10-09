@@ -78,6 +78,11 @@ export function ListingsView() {
   const isSubscribed = useMemo(() => !!user, [user]);
 
   useEffect(() => {
+    // Don't try to fetch listings if Firestore isn't initialized yet
+    if (!db) {
+      return;
+    }
+
     setLoading(true);
     const listingsCollection = collection(db, 'listings');
     const q = query(listingsCollection, orderBy('createdAt', 'desc'));
