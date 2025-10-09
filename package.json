@@ -9,7 +9,11 @@
     "build": "NODE_ENV=production next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepare": "husky",
+    "check-secrets": "! git ls-files | xargs grep -E 'AIzaSy|AKIA|sk_live|pk_live|_CnUV1xPCLUBUStRjBE7ej4g7c4|droibarvx|838682876814497|183517980169' && echo '✅ No hardcoded secrets found' || (echo '❌ Secrets found in tracked files!' && exit 1)",
+    "verify-gitignore": "! git ls-files | grep -E '^\\.env$|^\\.env\\.local$' && echo '✅ No .env files tracked' || (echo '❌ .env files are being tracked!' && exit 1)",
+    "security-audit": "npm run check-secrets && npm run verify-gitignore && npm audit"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.14.1",
@@ -64,6 +68,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "genkit-cli": "^1.14.1",
+    "husky": "^9.1.7",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"

@@ -45,7 +45,28 @@ firebase-debug.log
 firestore-debug.log
 .firebase/
 
-# Environment variables
+# Environment variables - NEVER commit these files
 .env
+.env.local
+.env.localy
 .env*.local
+.env.development
+.env.production
+.env.test
 !.env.example
+
+# Sensitive documentation with credentials
+VERCEL_SETUP.md
+
+# Vim swap files
+*.swp
+*.swo
+*~
+
+# Secrets and credentials
+*secret*
+*credentials*.json
+!**/src/**/*.ts
+!**/src/**/*.tsx
+!**/src/**/*.js
+!**/src/**/*.jsx

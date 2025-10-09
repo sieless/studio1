@@ -5,11 +5,36 @@
 
 import { v2 as cloudinary } from 'cloudinary';
 
+// Validate required environment variables
+if (!process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) {
+  throw new Error(
+    'Missing required environment variable: NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME\n' +
+    'Please ensure all Cloudinary environment variables are set in .env.local\n' +
+    'See .env.example for the required variables.'
+  );
+}
+
+if (!process.env.CLOUDINARY_API_KEY) {
+  throw new Error(
+    'Missing required environment variable: CLOUDINARY_API_KEY\n' +
+    'Please ensure all Cloudinary environment variables are set in .env.local\n' +
+    'See .env.example for the required variables.'
+  );
+}
+
+if (!process.env.CLOUDINARY_API_SECRET) {
+  throw new Error(
+    'Missing required environment variable: CLOUDINARY_API_SECRET\n' +
+    'Please ensure all Cloudinary environment variables are set in .env.local\n' +
+    'See .env.example for the required variables.'
+  );
+}
+
 // Configure Cloudinary with credentials from environment variables
 cloudinary.config({
-  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'droibarvx',
-  api_key: process.env.CLOUDINARY_API_KEY || '838682876814497',
-  api_secret: process.env.CLOUDINARY_API_SECRET || '_CnUV1xPCLUBUStRjBE7ej4g7c4',
+  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
 export default cloudinary;
