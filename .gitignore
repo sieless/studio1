@@ -76,3 +76,4 @@ src/components/check-project.sh
 !**/src/**/*.tsx
 !**/src/**/*.js
 !**/src/**/*.jsx.env.local
+.env.local
