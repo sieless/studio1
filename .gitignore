@@ -60,6 +60,10 @@ VERCEL_SETUP.md
 GIT_HISTORY_CLEANUP.md
 CREDENTIAL_ROTATION.md
 
+# Project diagnostic scripts
+check-project.sh
+src/components/check-project.sh
+
 # Vim swap files
 *.swp
 *.swo

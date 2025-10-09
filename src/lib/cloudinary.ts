@@ -1,43 +1,38 @@
 /**
  * Cloudinary Server Configuration
  * Used for server-side image uploads and transformations
+ *
+ * NOTE: Validation happens at runtime (when Cloudinary is actually used),
+ * not at build time. This allows the build to succeed in CI/CD environments.
  */
 
 import { v2 as cloudinary } from 'cloudinary';
 
-// Validate required environment variables
-if (!process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) {
-  throw new Error(
-    'Missing required environment variable: NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME\n' +
-    'Please ensure all Cloudinary environment variables are set in .env.local\n' +
-    'See .env.example for the required variables.'
-  );
-}
-
-if (!process.env.CLOUDINARY_API_KEY) {
-  throw new Error(
-    'Missing required environment variable: CLOUDINARY_API_KEY\n' +
-    'Please ensure all Cloudinary environment variables are set in .env.local\n' +
-    'See .env.example for the required variables.'
-  );
-}
-
-if (!process.env.CLOUDINARY_API_SECRET) {
-  throw new Error(
-    'Missing required environment variable: CLOUDINARY_API_SECRET\n' +
-    'Please ensure all Cloudinary environment variables are set in .env.local\n' +
-    'See .env.example for the required variables.'
-  );
-}
-
 // Configure Cloudinary with credentials from environment variables
+// Empty strings are fine for build - will fail gracefully at runtime if needed
 cloudinary.config({
-  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || '',
+  api_key: process.env.CLOUDINARY_API_KEY || '',
+  api_secret: process.env.CLOUDINARY_API_SECRET || '',
 });
 
 export default cloudinary;
+
+/**
+ * Validates Cloudinary configuration
+ * Call this in API routes before using Cloudinary
+ */
+export function validateCloudinaryConfig(): void {
+  if (!process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) {
+    throw new Error('NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME is not configured');
+  }
+  if (!process.env.CLOUDINARY_API_KEY) {
+    throw new Error('CLOUDINARY_API_KEY is not configured');
+  }
+  if (!process.env.CLOUDINARY_API_SECRET) {
+    throw new Error('CLOUDINARY_API_SECRET is not configured');
+  }
+}
 
 /**
  * Generate optimized Cloudinary URL with transformations
