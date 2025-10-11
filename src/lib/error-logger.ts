@@ -44,11 +44,14 @@ export async function logError(
 
     const errorLog: ErrorLog = {
       message: errorMessage,
-      stack: errorStack,
       severity: options.severity || 'MEDIUM',
       category: options.category || 'OTHER',
       timestamp: serverTimestamp(),
     };
+
+    if (errorStack) {
+      errorLog.stack = errorStack;
+    }
 
     // Only add optional fields if they have values to avoid undefined in Firestore
     if (options.userId && options.userId.trim() !== '') errorLog.userId = options.userId;

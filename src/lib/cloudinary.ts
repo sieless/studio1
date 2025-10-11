@@ -8,12 +8,22 @@
 
 import { v2 as cloudinary } from 'cloudinary';
 
+const CLOUD_NAME =
+  process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
+  process.env.CLOUDINARY_CLOUD_NAME ||
+  '';
+
+const API_KEY =
+  process.env.CLOUDINARY_API_KEY || process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY || '';
+
+const API_SECRET = process.env.CLOUDINARY_API_SECRET || '';
+
 // Configure Cloudinary with credentials from environment variables
 // Empty strings are fine for build - will fail gracefully at runtime if needed
 cloudinary.config({
-  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || '',
-  api_key: process.env.CLOUDINARY_API_KEY || '',
-  api_secret: process.env.CLOUDINARY_API_SECRET || '',
+  cloud_name: CLOUD_NAME,
+  api_key: API_KEY,
+  api_secret: API_SECRET,
 });
 
 export default cloudinary;
@@ -23,14 +33,22 @@ export default cloudinary;
  * Call this in API routes before using Cloudinary
  */
 export function validateCloudinaryConfig(): void {
-  if (!process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME) {
-    throw new Error('NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME is not configured');
+  const missingVars: string[] = [];
+
+  if (!process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME && !process.env.CLOUDINARY_CLOUD_NAME) {
+    missingVars.push('Cloudinary cloud name (NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME or CLOUDINARY_CLOUD_NAME)');
   }
-  if (!process.env.CLOUDINARY_API_KEY) {
-    throw new Error('CLOUDINARY_API_KEY is not configured');
+
+  if (!process.env.CLOUDINARY_API_KEY && !process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY) {
+    missingVars.push('CLOUDINARY_API_KEY');
   }
+
   if (!process.env.CLOUDINARY_API_SECRET) {
-    throw new Error('CLOUDINARY_API_SECRET is not configured');
+    missingVars.push('CLOUDINARY_API_SECRET');
+  }
+
+  if (missingVars.length > 0) {
+    throw new Error(`Missing Cloudinary environment variables: ${missingVars.join(', ')}`);
   }
 }
 
