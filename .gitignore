@@ -1,6 +1,127 @@
+# ================================
+# COMPREHENSIVE .GITIGNORE FILE
+# SECURITY-FIRST APPROACH
+# ================================
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
+# ================================
+# 🔐 SECRETS & CREDENTIALS (CRITICAL)
+# ================================
+# Environment files - NEVER commit these
+.env
+.env.local
+.env.localy
+.env*.local
+.env.development
+.env.production
+.env.staging
+.env.test
+!.env.example
+!.env.template
+
+# API Keys and Tokens
+**/api-key*
+**/api_key*
+**/*apikey*
+**/*api-key*
+**/token*
+**/bearer*
+**/oauth*
+**/refresh-token*
+**/access-token*
+
+# Authentication files
+**/auth*
+**/jwt*
+**/session*
+**/cookie*
+**/*auth*
+**/*jwt*
+
+# Certificates and Keys
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.truststore
+**/*private*
+**/*public*.pem
+**/*cert*
+
+# SSH Keys
+**/id_rsa
+**/id_dsa
+**/id_ecdsa
+**/id_ed25519
+**/*.ppk
+**/known_hosts
+**/.ssh/
+
+# GPG Keys
+**/*.gpg
+**/*.asc
+**/secring.gpg
+**/pubring.gpg
+
+# Password files
+**/password*
+**/passwd*
+**/*password*
+**/*passwd*
+**/credentials*
+**/secret*
+**/*secret*
+**/*credential*
+
+# Database credentials
+**/db-config*
+**/database.yml
+**/database.json
+**/connection-string*
+
+# Cloud provider credentials
+**/.aws/
+**/.azure/
+**/.gcp/
+**/gcloud/
+**/service-account*.json
+**/aws-credentials*
+**/azure-credentials*
+**/gcp-credentials*
+
+# Backup files that might contain secrets
+*.backup
+*.bak
+*.old
+*.orig
+*.save
+
+# ================================
+# 📱 MOBILE & DEVICE SECRETS
+# ================================
+# iOS
+**/Pods/
+**/*.mobileprovision
+**/*.p8
+**/*.p12
+**/AuthKey_*.p8
+**/GoogleService-Info.plist
+
+# Android
+**/keystore
+**/release.jks
+**/debug.jks
+**/google-services.json
+**/key.properties
+
+# ================================
+# 🔧 DEVELOPMENT TOOLS
+# ================================
+# Dependencies
 /node_modules
 /.pnp
 .pnp.*
@@ -10,51 +131,96 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
+# Package managers
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+package-lock.json
+yarn.lock
+.yarn/install-state.gz
 
-# vercel
+# Testing
+/coverage
+/test-results/
+/playwright-report/
+/test-results.xml
+/junit.xml
+
+# ================================
+# 🏗️ BUILD & DEPLOYMENT
+# ================================
+# Next.js
+/.next/
+/out/
+
+# Production builds
+/build
+/dist
+/public/build
+
+# Deployment platforms
 .vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-
-.genkit/*
-.env*
-
-# firebase
+.netlify
+.firebase/
 firebase-debug.log
 firestore-debug.log
-.firebase/
 
-# Environment variables - NEVER commit these files
-.env
-.env.local
-.env.localy
-.env*.local
-.env.development
-.env.production
-.env.test
-!.env.example
+# ================================
+# 🗃️ DATABASES & STORAGE
+# ================================
+# Local databases
+*.sqlite
+*.sqlite3
+*.db
+*.mdb
+*.accdb
 
+# Database dumps
+*.sql
+*.dump
+*.backup
+
+# ================================
+# 📝 LOGS & TEMPORARY FILES
+# ================================
+# Logs
+*.log
+logs/
+*.log.*
+
+# Temporary files
+*.tmp
+*.temp
+/tmp/
+.cache/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Editor files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.sublime-*
+
+# ================================
+# 🎯 TYPESCRIPT & JAVASCRIPT
+# ================================
+*.tsbuildinfo
+next-env.d.ts
+.genkit/*
+
+# ================================
+# 📋 PROJECT SPECIFIC
+# ================================
 # Sensitive documentation with credentials
 VERCEL_SETUP.md
 GIT_HISTORY_CLEANUP.md
@@ -64,16 +230,41 @@ CREDENTIAL_ROTATION.md
 check-project.sh
 src/components/check-project.sh
 
-# Vim swap files
-*.swp
-*.swo
-*~
+# ================================
+# 🚫 ADDITIONAL SECURITY PATTERNS
+# ================================
+# Any file with 'secret' in name
+**/*secret*
+**/*SECRET*
 
-# Secrets and credentials
-*secret*
-*credentials*.json
-!**/src/**/*.ts
-!**/src/**/*.tsx
-!**/src/**/*.js
-!**/src/**/*.jsx.env.local
-.env.local
+# Configuration files that might contain secrets
+config/production.js
+config/staging.js
+**/*prod*.json
+**/*production*.json
+**/*staging*.json
+
+# Terraform and Infrastructure
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraform/
+
+# Docker secrets
+docker-compose.override.yml
+docker-compose.prod.yml
+.docker/
+
+# Kubernetes secrets
+**/k8s-secret*.yml
+**/k8s-secret*.yaml
+**/kubernetes-secret*
+
+# ================================
+# ✅ KEEP THESE (Examples/Templates)
+# ================================
+!.env.example
+!.env.template
+!config.example.js
+!credentials.example.json
+!**/*.example.*

@@ -1,10 +1,9 @@
-#!/bin/sh
-. "$(dirname "$0")/_/husky.sh"
+#!/usr/bin/env sh
 
 echo "🔒 Running security checks..."
 
-# Check for potential secrets in staged files
-if git diff --cached --diff-filter=ACM | grep -E 'AIzaSy|AKIA|sk_live|pk_live|api[_-]?key.*=.*["\x27][A-Za-z0-9]{20,}|secret[_-]?key.*=.*["\x27][A-Za-z0-9]{20,}|_CnUV1xPCLUBUStRjBE7ej4g7c4|droibarvx|838682876814497|183517980169'; then
+# Check for potential secrets in staged files (excluding legitimate Cloudinary URLs)
+if git diff --cached --diff-filter=ACM | grep -E 'AIzaSy|AKIA|sk_live|pk_live|api[_-]?key.*=.*["\x27][A-Za-z0-9]{20,}|secret[_-]?key.*=.*["\x27][A-Za-z0-9]{20,}|_CnUV1xPCLUBUStRjBE7ej4g7c4|838682876814497|183517980169' | grep -v 'res\.cloudinary\.com'; then
   echo ""
   echo "❌ ERROR: Potential API key or secret detected in staged files!"
   echo ""
