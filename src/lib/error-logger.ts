@@ -47,13 +47,15 @@ export async function logError(
       stack: errorStack,
       severity: options.severity || 'MEDIUM',
       category: options.category || 'OTHER',
-      userId: options.userId,
-      userEmail: options.userEmail,
-      url: typeof window !== 'undefined' ? window.location.href : undefined,
-      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
       timestamp: serverTimestamp(),
-      metadata: options.metadata,
     };
+
+    // Only add optional fields if they have values to avoid undefined in Firestore
+    if (options.userId) errorLog.userId = options.userId;
+    if (options.userEmail) errorLog.userEmail = options.userEmail;
+    if (typeof window !== 'undefined' && window.location.href) errorLog.url = window.location.href;
+    if (typeof navigator !== 'undefined' && navigator.userAgent) errorLog.userAgent = navigator.userAgent;
+    if (options.metadata) errorLog.metadata = options.metadata;
 
     await addDoc(collection(db, 'error_logs'), errorLog);
 

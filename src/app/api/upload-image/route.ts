@@ -4,10 +4,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import cloudinary from '@/lib/cloudinary';
+import cloudinary, { validateCloudinaryConfig } from '@/lib/cloudinary';
 
 export async function POST(request: NextRequest) {
   try {
+    // Validate Cloudinary configuration first
+    validateCloudinaryConfig();
     // Parse the form data
     const formData = await request.formData();
     const file = formData.get('image') as File;
