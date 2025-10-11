@@ -60,7 +60,7 @@ export function ImageUpload({
         description: validation.errors[0],
         variant: 'destructive',
       });
-      logUploadError(validation.errors.join(', '), 'Multiple files', filesToUpload.length);
+      logUploadError(validation.errors.join(', '), 'multiple_files_validation', filesToUpload.length);
       return;
     }
 
@@ -77,7 +77,7 @@ export function ImageUpload({
             description: `${file.name}: ${fileValidation.errors[0]}`,
             variant: 'destructive',
           });
-          logUploadError(fileValidation.errors.join(', '), file.name, file.size);
+          logUploadError(fileValidation.errors.join(', '), file?.name || 'unknown', file?.size || 0);
           return null;
         }
 
@@ -89,7 +89,7 @@ export function ImageUpload({
             description: `${file.name} is not a valid image file`,
             variant: 'destructive',
           });
-          logUploadError('Invalid image header', file.name, file.size);
+          logUploadError('Invalid image header', file?.name || 'unknown', file?.size || 0);
           return null;
         }
 
@@ -112,8 +112,18 @@ export function ImageUpload({
         });
 
         if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || 'Upload failed');
+          let errorMessage = 'Upload failed';
+          try {
+            const error = await response.json();
+            errorMessage = error.error || error.message || 'Upload failed';
+            if (process.env.NODE_ENV === 'development' && error.details) {
+              console.error('Upload error details:', error.details);
+            }
+          } catch (parseError) {
+            console.error('Failed to parse error response:', parseError);
+            errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          }
+          throw new Error(errorMessage);
         }
 
         const data = await response.json();
@@ -136,7 +146,7 @@ export function ImageUpload({
       }
     } catch (error: any) {
       console.error('Upload error:', error);
-      logUploadError(error.message || error.toString(), 'Upload batch', filesToUpload.length);
+      logUploadError(error.message || error.toString(), 'batch_upload_error', filesToUpload.length);
       toast({
         title: 'Upload failed',
         description: error.message || 'Failed to upload images. Please try again.',

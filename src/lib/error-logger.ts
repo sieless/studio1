@@ -51,11 +51,22 @@ export async function logError(
     };
 
     // Only add optional fields if they have values to avoid undefined in Firestore
-    if (options.userId) errorLog.userId = options.userId;
-    if (options.userEmail) errorLog.userEmail = options.userEmail;
-    if (typeof window !== 'undefined' && window.location.href) errorLog.url = window.location.href;
+    if (options.userId && options.userId.trim() !== '') errorLog.userId = options.userId;
+    if (options.userEmail && options.userEmail.trim() !== '') errorLog.userEmail = options.userEmail;
+    if (typeof window !== 'undefined' && window.location?.href) errorLog.url = window.location.href;
     if (typeof navigator !== 'undefined' && navigator.userAgent) errorLog.userAgent = navigator.userAgent;
-    if (options.metadata) errorLog.metadata = options.metadata;
+    if (options.metadata && Object.keys(options.metadata).length > 0) {
+      // Filter out undefined values from metadata
+      const cleanMetadata: Record<string, any> = {};
+      Object.entries(options.metadata).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          cleanMetadata[key] = value;
+        }
+      });
+      if (Object.keys(cleanMetadata).length > 0) {
+        errorLog.metadata = cleanMetadata;
+      }
+    }
 
     await addDoc(collection(db, 'error_logs'), errorLog);
 
@@ -114,8 +125,14 @@ export async function logDatabaseError(error: Error | string, operation?: string
  */
 export async function logUploadError(error: Error | string, fileName?: string, fileSize?: number) {
   const metadata: Record<string, any> = {};
-  if (fileName) metadata.fileName = fileName;
-  if (fileSize) metadata.fileSize = fileSize;
+  
+  // Only add fields with defined values
+  if (fileName !== undefined && fileName !== null && fileName !== '') {
+    metadata.fileName = fileName;
+  }
+  if (fileSize !== undefined && fileSize !== null && fileSize > 0) {
+    metadata.fileSize = fileSize;
+  }
   
   return logError(error, {
     severity: 'MEDIUM',

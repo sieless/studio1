@@ -8,25 +8,35 @@ interface FirebaseClientProviderProps {
   children: ReactNode;
 }
 
-export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
-  const [isClient, setIsClient] = useState(false);
+// Global singleton to ensure Firebase is only initialized once
+let firebaseServices: ReturnType<typeof initializeFirebase> | null = null;
+let initializationPromise: Promise<ReturnType<typeof initializeFirebase>> | null = null;
 
-  // Only initialize Firebase on the client side
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+async function getFirebaseServices(): Promise<ReturnType<typeof initializeFirebase> | null> {
+  // Return cached services if already initialized
+  if (firebaseServices) {
+    return firebaseServices;
+  }
 
-  const firebaseServices = useMemo(() => {
-    // Only initialize Firebase when we're on the client
-    if (typeof window === 'undefined' || !isClient) {
-      return null;
-    }
+  // Return existing promise if initialization is in progress
+  if (initializationPromise) {
+    return initializationPromise;
+  }
 
+  // Create new initialization promise
+  initializationPromise = new Promise((resolve, reject) => {
     try {
+      // Detect React Strict Mode double rendering in development
+      const isDev = process.env.NODE_ENV === 'development';
+      if (isDev) {
+        console.log('FirebaseClientProvider: Development mode detected - ensuring singleton initialization');
+      }
+      
       console.log('FirebaseClientProvider: Attempting to initialize Firebase...');
       const services = initializeFirebase();
+      firebaseServices = services;
       console.log('FirebaseClientProvider: Firebase initialized successfully');
-      return services;
+      resolve(services);
     } catch (error) {
       console.error('FirebaseClientProvider: Failed to initialize Firebase:', error);
       
@@ -35,18 +45,41 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
         console.error('FirebaseClientProvider: Please check your .env.local file');
       }
       
-      // Return null to allow app to continue without Firebase
-      return null;
+      initializationPromise = null; // Reset promise on error to allow retry
+      resolve(null); // Don't reject to allow app to continue
+    }
+  });
+
+  return initializationPromise;
+}
+
+export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
+  const [isClient, setIsClient] = useState(false);
+  const [services, setServices] = useState<ReturnType<typeof initializeFirebase> | null>(null);
+
+  // Only initialize Firebase on the client side
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Initialize Firebase services once client-side
+  useEffect(() => {
+    if (isClient && typeof window !== 'undefined') {
+      getFirebaseServices().then(setServices);
     }
   }, [isClient]);
+
+  const memoizedServices = useMemo(() => {
+    return services;
+  }, [services]);
 
   // Always render with FirebaseProvider, even if services aren't ready
   // The provider will handle null services gracefully
   return (
     <FirebaseProvider
-      firebaseApp={firebaseServices?.firebaseApp || null as any}
-      auth={firebaseServices?.auth || null as any}
-      firestore={firebaseServices?.firestore || null as any}
+      firebaseApp={memoizedServices?.firebaseApp || null as any}
+      auth={memoizedServices?.auth || null as any}
+      firestore={memoizedServices?.firestore || null as any}
     >
       {children}
     </FirebaseProvider>

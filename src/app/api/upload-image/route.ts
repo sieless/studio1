@@ -18,7 +18,10 @@ export async function POST(request: NextRequest) {
     } catch (configError) {
       console.error('❌ Cloudinary configuration error:', configError);
       return NextResponse.json(
-        { error: 'Server configuration error. Please contact support.' },
+        { 
+          error: 'Server configuration error. Please contact support.',
+          details: process.env.NODE_ENV === 'development' ? configError.message : undefined
+        },
         { status: 500 }
       );
     }
@@ -38,9 +41,12 @@ export async function POST(request: NextRequest) {
         size: file?.size || 0
       });
     } catch (parseError) {
-      console.error('❌ FormData parsing failed:', parseError.message);
+      console.error('❌ FormData parsing failed:', parseError);
       return NextResponse.json(
-        { error: 'Invalid form data. Please ensure you are sending a proper multipart/form-data request.' },
+        { 
+          error: 'Invalid form data. Please ensure you are sending a proper multipart/form-data request.',
+          details: process.env.NODE_ENV === 'development' ? parseError.message : undefined
+        },
         { status: 400 }
       );
     }
