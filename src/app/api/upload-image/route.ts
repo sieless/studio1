@@ -7,12 +7,43 @@ import { NextRequest, NextResponse } from 'next/server';
 import cloudinary, { validateCloudinaryConfig } from '@/lib/cloudinary';
 
 export async function POST(request: NextRequest) {
+  console.log('📤 Image upload API called');
+  
   try {
     // Validate Cloudinary configuration first
-    validateCloudinaryConfig();
+    console.log('🔧 Validating Cloudinary configuration...');
+    try {
+      validateCloudinaryConfig();
+      console.log('✅ Cloudinary configuration valid');
+    } catch (configError) {
+      console.error('❌ Cloudinary configuration error:', configError);
+      return NextResponse.json(
+        { error: 'Server configuration error. Please contact support.' },
+        { status: 500 }
+      );
+    }
+    
     // Parse the form data
-    const formData = await request.formData();
-    const file = formData.get('image') as File;
+    console.log('📋 Parsing form data...');
+    
+    let formData;
+    let file;
+    
+    try {
+      formData = await request.formData();
+      file = formData.get('image') as File;
+      console.log('📁 File received:', {
+        name: file?.name || 'No name',
+        type: file?.type || 'No type',
+        size: file?.size || 0
+      });
+    } catch (parseError) {
+      console.error('❌ FormData parsing failed:', parseError.message);
+      return NextResponse.json(
+        { error: 'Invalid form data. Please ensure you are sending a proper multipart/form-data request.' },
+        { status: 400 }
+      );
+    }
 
     if (!file) {
       return NextResponse.json(
@@ -40,10 +71,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Convert file to buffer
+    console.log('🔄 Converting file to buffer...');
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    console.log('✅ Buffer created, size:', buffer.length, 'bytes');
 
     // Upload to Cloudinary using upload_stream
+    console.log('☁️ Starting Cloudinary upload...');
     const uploadResult = await new Promise<any>((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
@@ -55,9 +89,19 @@ export async function POST(request: NextRequest) {
         },
         (error, result) => {
           if (error) {
-            console.error('Cloudinary upload error:', error);
+            console.error('❌ Cloudinary upload error:', {
+              message: error.message,
+              http_code: error.http_code,
+              error: error.error
+            });
             reject(error);
           } else {
+            console.log('✅ Cloudinary upload successful:', {
+              public_id: result?.public_id,
+              secure_url: result?.secure_url,
+              width: result?.width,
+              height: result?.height
+            });
             resolve(result);
           }
         }
@@ -78,9 +122,30 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
   } catch (error: any) {
-    console.error('Image upload error:', error);
+    console.error('❌ Image upload error details:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+      cause: error.cause,
+      http_code: error.http_code,
+      error_details: error.error
+    });
+    
+    // Determine specific error message
+    let errorMessage = 'Failed to upload image. Please try again.';
+    if (error.message?.includes('configuration') || error.message?.includes('API key')) {
+      errorMessage = 'Server configuration error. Please contact support.';
+    } else if (error.http_code === 401) {
+      errorMessage = 'Authentication failed. Please contact support.';
+    } else if (error.http_code === 400) {
+      errorMessage = 'Invalid file format or corrupted file.';
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to upload image. Please try again.' },
+      { 
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
       { status: 500 }
     );
   }

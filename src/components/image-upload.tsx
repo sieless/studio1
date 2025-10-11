@@ -60,7 +60,7 @@ export function ImageUpload({
         description: validation.errors[0],
         variant: 'destructive',
       });
-      logUploadError(validation.errors.join(', '));
+      logUploadError(validation.errors.join(', '), 'Multiple files', filesToUpload.length);
       return;
     }
 
@@ -136,7 +136,7 @@ export function ImageUpload({
       }
     } catch (error: any) {
       console.error('Upload error:', error);
-      logUploadError(error, undefined, undefined);
+      logUploadError(error.message || error.toString(), 'Upload batch', filesToUpload.length);
       toast({
         title: 'Upload failed',
         description: error.message || 'Failed to upload images. Please try again.',

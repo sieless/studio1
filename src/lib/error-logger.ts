@@ -113,10 +113,14 @@ export async function logDatabaseError(error: Error | string, operation?: string
  * Log upload errors
  */
 export async function logUploadError(error: Error | string, fileName?: string, fileSize?: number) {
+  const metadata: Record<string, any> = {};
+  if (fileName) metadata.fileName = fileName;
+  if (fileSize) metadata.fileSize = fileSize;
+  
   return logError(error, {
     severity: 'MEDIUM',
     category: 'UPLOAD',
-    metadata: { fileName, fileSize },
+    metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
   });
 }
 

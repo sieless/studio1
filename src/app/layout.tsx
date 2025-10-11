@@ -18,15 +18,9 @@ export const metadata: Metadata = {
   description: 'Discover rental properties across Kenya. Browse bedsitters, apartments, houses, and commercial spaces in all 47 counties. Connect directly with landlords. Free to search!',
   keywords: ['Kenya rentals', 'property Kenya', 'houses for rent', 'apartments Kenya', 'bedsitter Kenya', 'rental homes', 'Nairobi rentals', 'Machakos rentals', 'Mombasa rentals'],
   authors: [{ name: 'Key-2-Rent' }],
-  icons: {
-    icon: [
-      { url: 'https://res.cloudinary.com/droibarvx/image/upload/w_32,h_32/key2rent/logo-icon.png', sizes: '32x32', type: 'image/png' },
-      { url: 'https://res.cloudinary.com/droibarvx/image/upload/w_16,h_16/key2rent/logo-icon.png', sizes: '16x16', type: 'image/png' },
-    ],
-    apple: [
-      { url: 'https://res.cloudinary.com/droibarvx/image/upload/w_180,h_180/key2rent/logo-icon.png', sizes: '180x180', type: 'image/png' },
-    ],
-  },
+  // Icons are now handled by icon.tsx and apple-touch-icon.tsx
+  // Next.js will automatically generate favicons from these files
+  manifest: '/manifest.json',
   openGraph: {
     title: 'Key-2-Rent - Property Rentals Across Kenya',
     description: 'Find your perfect rental home in Kenya. Search across all 47 counties.',
