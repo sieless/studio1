@@ -8,15 +8,47 @@
 
 import { v2 as cloudinary } from 'cloudinary';
 
+interface ParsedCloudinaryUrl {
+  cloudName?: string;
+  apiKey?: string;
+  apiSecret?: string;
+}
+
+function parseCloudinaryUrl(url: string | undefined): ParsedCloudinaryUrl {
+  if (!url) return {};
+
+  try {
+    const parsed = new URL(url);
+    // Cloudinary URLs follow cloudinary://<api_key>:<api_secret>@<cloud_name>
+    return {
+      apiKey: parsed.username || undefined,
+      apiSecret: parsed.password || undefined,
+      cloudName: parsed.host || undefined,
+    };
+  } catch (parseError) {
+    console.warn(
+      'Invalid CLOUDINARY_URL format. Expected cloudinary://<api_key>:<api_secret>@<cloud_name>',
+      parseError
+    );
+    return {};
+  }
+}
+
+const parsedFromUrl = parseCloudinaryUrl(process.env.CLOUDINARY_URL);
+
 const CLOUD_NAME =
   process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ||
   process.env.CLOUDINARY_CLOUD_NAME ||
+  parsedFromUrl.cloudName ||
   '';
 
 const API_KEY =
-  process.env.CLOUDINARY_API_KEY || process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY || '';
+  process.env.CLOUDINARY_API_KEY ||
+  process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY ||
+  parsedFromUrl.apiKey ||
+  '';
 
-const API_SECRET = process.env.CLOUDINARY_API_SECRET || '';
+const API_SECRET = process.env.CLOUDINARY_API_SECRET || parsedFromUrl.apiSecret || '';
 
 // Configure Cloudinary with credentials from environment variables
 // Empty strings are fine for build - will fail gracefully at runtime if needed
@@ -24,6 +56,7 @@ cloudinary.config({
   cloud_name: CLOUD_NAME,
   api_key: API_KEY,
   api_secret: API_SECRET,
+  secure: true,
 });
 
 export default cloudinary;
@@ -35,16 +68,16 @@ export default cloudinary;
 export function validateCloudinaryConfig(): void {
   const missingVars: string[] = [];
 
-  if (!process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME && !process.env.CLOUDINARY_CLOUD_NAME) {
-    missingVars.push('Cloudinary cloud name (NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME or CLOUDINARY_CLOUD_NAME)');
+  if (!CLOUD_NAME) {
+    missingVars.push('Cloudinary cloud name (NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME, CLOUDINARY_CLOUD_NAME, or CLOUDINARY_URL)');
   }
 
-  if (!process.env.CLOUDINARY_API_KEY && !process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY) {
-    missingVars.push('CLOUDINARY_API_KEY');
+  if (!API_KEY) {
+    missingVars.push('Cloudinary API key (CLOUDINARY_API_KEY, NEXT_PUBLIC_CLOUDINARY_API_KEY, or CLOUDINARY_URL)');
   }
 
-  if (!process.env.CLOUDINARY_API_SECRET) {
-    missingVars.push('CLOUDINARY_API_SECRET');
+  if (!API_SECRET) {
+    missingVars.push('Cloudinary API secret (CLOUDINARY_API_SECRET or CLOUDINARY_URL)');
   }
 
   if (missingVars.length > 0) {
