@@ -23,9 +23,19 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
     }
 
     try {
-      return initializeFirebase();
+      console.log('FirebaseClientProvider: Attempting to initialize Firebase...');
+      const services = initializeFirebase();
+      console.log('FirebaseClientProvider: Firebase initialized successfully');
+      return services;
     } catch (error) {
-      console.error('Failed to initialize Firebase:', error);
+      console.error('FirebaseClientProvider: Failed to initialize Firebase:', error);
+      
+      // Check if it's a configuration error
+      if (error.message?.includes('Missing required Firebase configuration')) {
+        console.error('FirebaseClientProvider: Please check your .env.local file');
+      }
+      
+      // Return null to allow app to continue without Firebase
       return null;
     }
   }, [isClient]);

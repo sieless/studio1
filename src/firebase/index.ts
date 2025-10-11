@@ -1,21 +1,48 @@
 'use client';
 
-import { firebaseConfig } from '@/firebase/config';
+import { firebaseConfig, validateFirebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore'
 
-// IMPORTANT: DO NOT MODIFY THIS FUNCTION
+// Fixed Firebase initialization function
 export function initializeFirebase() {
-  if (!getApps().length) {
-    // Always use firebaseConfig for consistent initialization
-    // This prevents the "no-options" error in production
-    const firebaseApp = initializeApp(firebaseConfig);
-    return getSdks(firebaseApp);
+  try {
+    console.log('🔥 Initializing Firebase...');
+    
+    // Validate configuration first
+    validateFirebaseConfig();
+    
+    // Get existing apps
+    const existingApps = getApps();
+    
+    let firebaseApp;
+    
+    if (existingApps.length === 0) {
+      // No existing apps, create new one
+      console.log('🔥 Creating new Firebase app');
+      firebaseApp = initializeApp(firebaseConfig);
+    } else {
+      // Use existing app
+      console.log('🔥 Using existing Firebase app');
+      firebaseApp = existingApps[0];
+    }
+    
+    // Initialize services
+    const auth = getAuth(firebaseApp);
+    const firestore = getFirestore(firebaseApp);
+    
+    console.log('🔥 Firebase initialization complete');
+    
+    return {
+      firebaseApp,
+      auth,
+      firestore
+    };
+  } catch (error) {
+    console.error('🔥 Firebase initialization error:', error);
+    throw error;
   }
-
-  // If already initialized, return the SDKs with the already initialized App
-  return getSdks(getApp());
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {

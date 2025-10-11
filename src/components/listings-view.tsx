@@ -7,7 +7,7 @@ import {
   query,
   orderBy,
 } from 'firebase/firestore';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore, useUser, useFirebase } from '@/firebase';
 import { type Listing } from '@/types';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
@@ -70,8 +70,9 @@ export function ListingsView() {
     status: 'All',
   });
 
-  const db = useFirestore();
-  const { user, isUserLoading } = useUser();
+  // Get Firebase context to check if services are available
+  const { firestore, user, isUserLoading } = useFirebase();
+  const db = firestore;
   const router = useRouter();
   const { toast } = useToast();
 
@@ -146,6 +147,22 @@ export function ListingsView() {
   }, [regularListings]);
 
   const hasMore = regularListings.length > INITIAL_VISIBLE_COUNT;
+
+  // Show loading skeleton while Firebase is initializing
+  if (!db && loading) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <Header onPostClick={() => {}} />
+        <Hero />
+        <main className="flex-grow w-full">
+          <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+            <LoadingSkeletons />
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen">

@@ -16,6 +16,7 @@ import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { analyzeListingImage } from '@/app/actions';
 import { ImageUpload } from '@/components/image-upload';
+import { VacancyPaymentModal } from '@/components/vacancy-payment-modal';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -90,6 +91,8 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [analyzedImageIndex, setAnalyzedImageIndex] = useState<number | null>(null);
   const [featureOptions, setFeatureOptions] = useState(allFeatureOptions.residential);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [pendingListingData, setPendingListingData] = useState<ListingData | null>(null);
 
 
   const { toast } = useToast();
@@ -159,6 +162,13 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
       return;
     }
 
+    // Check if status is Vacant - require payment
+    if (data.status === 'Vacant') {
+      setPendingListingData(data);
+      setShowPaymentModal(true);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -204,7 +214,62 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
     }
   };
 
+  const createListingAfterPayment = async () => {
+    if (!pendingListingData || !user) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const listingPayload: any = {
+        ...pendingListingData,
+        userId: user.uid,
+        createdAt: serverTimestamp(),
+        // Set as Occupied with pending payment flag instead of Vacant
+        status: 'Occupied',
+        pendingVacancyPayment: true,
+      };
+
+      if (!listingPayload.name) delete listingPayload.name;
+      if (!listingPayload.businessTerms) delete listingPayload.businessTerms;
+
+      const fieldsToProcessAsNumbers = ['price', 'deposit', 'depositMonths', 'totalUnits', 'availableUnits'];
+      fieldsToProcessAsNumbers.forEach(field => {
+        if (listingPayload[field] === '' || listingPayload[field] === undefined || isNaN(listingPayload[field])) {
+            delete listingPayload[field];
+        } else {
+            listingPayload[field] = Number(listingPayload[field]);
+        }
+      });
+
+      const docRef = await addDoc(collection(db, 'listings'), listingPayload);
+
+      const userRef = doc(db, 'users', user.uid);
+      updateDocumentNonBlocking(userRef, { listings: arrayUnion(docRef.id) });
+
+      toast({
+        title: 'Listing Created!',
+        description: 'Your listing is pending payment verification. It will be visible as vacant once payment is confirmed.',
+      });
+
+      form.reset();
+      setPendingListingData(null);
+      onClose();
+    } catch (error) {
+      console.error('Error adding document: ', error);
+      toast({
+        variant: 'destructive',
+        title: 'Uh oh! Something went wrong.',
+        description: 'Failed to create listing. Please try again.',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
+    <>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
           <DialogHeader className="pr-6">
@@ -653,5 +718,14 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
           </div>
         </DialogContent>
       </Dialog>
+      
+      <VacancyPaymentModal
+        open={showPaymentModal}
+        onOpenChange={setShowPaymentModal}
+        propertyType={pendingListingData?.type || ''}
+        onPaymentConfirmed={createListingAfterPayment}
+        isLoading={isSubmitting}
+      />
+    </>
   );
 }

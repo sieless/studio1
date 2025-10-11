@@ -32,6 +32,9 @@ export type Listing = {
   boostedUntil?: Timestamp;          // Expiration date for boost
   boostedPaidAt?: Timestamp;         // When landlord paid for boost
   boostedPaidAmount?: number;        // Amount paid (KES)
+
+  // Vacancy payment system
+  pendingVacancyPayment?: boolean;   // Listing awaiting payment verification for vacancy status
 };
 
 export type ListingFormData = {

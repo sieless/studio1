@@ -1,0 +1,39 @@
+{
+  "version": "2.0.0",
+  "inputs": [
+    {
+      "id": "droidSubagent",
+      "type": "promptString",
+      "description": "Subagent type (e.g. jsdoc-comment-generator)",
+      "default": "jsdoc-comment-generator"
+    },
+    {
+      "id": "droidDescription",
+      "type": "promptString",
+      "description": "Short description for this Droid run",
+      "default": "Run custom Factory Droid task"
+    },
+    {
+      "id": "droidPrompt",
+      "type": "promptString",
+      "description": "Prompt to send to the Droid",
+      "default": ""
+    }
+  ],
+  "tasks": [
+    {
+      "label": "Run Droid Task",
+      "type": "shell",
+      "command": "task-cli",
+      "args": [
+        "{\"subagent_type\":\"${input:droidSubagent}\",\"description\":\"${input:droidDescription}\",\"prompt\":\"${input:droidPrompt}\"}"
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": false
+      }
+    }
+  ]
+}

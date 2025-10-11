@@ -37,6 +37,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { AddListingModal } from '@/components/add-listing-modal';
+import { VacancyPaymentModal } from '@/components/vacancy-payment-modal';
 import { getPropertyIcon, getStatusClass } from '@/lib/utils';
 import { DefaultPlaceholder } from '@/components/default-placeholder';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -67,6 +68,19 @@ export default function MyListingsPage() {
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const [updatingUnitsId, setUpdatingUnitsId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [pendingStatusChange, setPendingStatusChange] = useState<{
+    listingId: string;
+    newStatus: Listing['status'];
+    propertyType: string;
+  } | null>(null);
+  const [pendingUnitAdjustment, setPendingUnitAdjustment] = useState<{
+    listingId: string;
+    adjustment: number;
+    currentAvailable: number;
+    totalUnits: number;
+    propertyType: string;
+  } | null>(null);
 
   
   const { user, isUserLoading } = useUser();
@@ -133,7 +147,9 @@ export default function MyListingsPage() {
   };
 
   const handleToggleStatus = async (listingId: string, currentStatus: Listing['status']) => {
-    setUpdatingStatusId(listingId);
+    const listing = listings.find(l => l.id === listingId);
+    if (!listing) return;
+
     let newStatus: Listing['status'];
     switch (currentStatus) {
         case 'Vacant':
@@ -148,6 +164,20 @@ export default function MyListingsPage() {
         default:
             newStatus = 'Vacant';
     }
+
+    // Check if changing TO Vacant - require payment
+    if (newStatus === 'Vacant') {
+      setPendingStatusChange({
+        listingId,
+        newStatus,
+        propertyType: listing.type,
+      });
+      setShowPaymentModal(true);
+      return;
+    }
+
+    // For non-vacancy changes, proceed directly
+    setUpdatingStatusId(listingId);
     
     try {
       const listingRef = doc(db, 'listings', listingId);
@@ -178,12 +208,29 @@ export default function MyListingsPage() {
   }
 
   const handleAdjustUnits = async (listingId: string, adjustment: number, currentAvailable: number, totalUnits: number) => {
-    setUpdatingUnitsId(listingId);
+    const listing = listings.find(l => l.id === listingId);
+    if (!listing) return;
 
     const newAvailable = Math.max(0, Math.min(totalUnits, currentAvailable + adjustment));
 
     // Auto-determine status based on availability
     const newStatus: Listing['status'] = newAvailable > 0 ? 'Vacant' : 'Occupied';
+
+    // Check if increasing units from 0 → vacant - require payment
+    if (currentAvailable === 0 && newAvailable > 0) {
+      setPendingUnitAdjustment({
+        listingId,
+        adjustment,
+        currentAvailable,
+        totalUnits,
+        propertyType: listing.type,
+      });
+      setShowPaymentModal(true);
+      return;
+    }
+
+    // For decreasing units or other changes, proceed directly
+    setUpdatingUnitsId(listingId);
 
     try {
       const listingRef = doc(db, 'listings', listingId);
@@ -208,6 +255,78 @@ export default function MyListingsPage() {
     }
   };
 
+  const handlePaymentConfirmed = async () => {
+    if (pendingStatusChange) {
+      // Handle status change after payment
+      const { listingId, newStatus } = pendingStatusChange;
+      setUpdatingStatusId(listingId);
+      
+      try {
+        const listingRef = doc(db, 'listings', listingId);
+        // Set as Occupied with pending payment flag instead of Vacant
+        await updateDoc(listingRef, { 
+          status: 'Occupied',
+          pendingVacancyPayment: true 
+        });
+        
+        toast({
+          title: 'Payment Confirmed',
+          description: 'Your listing is pending admin verification. It will show as vacant once payment is confirmed.',
+        });
+      } catch (error) {
+        console.error('Error updating status:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Update Failed',
+          description: 'Could not update the listing status. Please try again.',
+        });
+      } finally {
+        setUpdatingStatusId(null);
+        setPendingStatusChange(null);
+      }
+    } else if (pendingUnitAdjustment) {
+      // Handle unit adjustment after payment
+      const { listingId, adjustment, currentAvailable, totalUnits } = pendingUnitAdjustment;
+      setUpdatingUnitsId(listingId);
+      
+      try {
+        const newAvailable = Math.max(0, Math.min(totalUnits, currentAvailable + adjustment));
+        const listingRef = doc(db, 'listings', listingId);
+        
+        // Set available units but keep as Occupied with pending payment flag
+        await updateDoc(listingRef, {
+          availableUnits: newAvailable,
+          status: 'Occupied', // Keep as occupied until admin approves
+          pendingVacancyPayment: true
+        });
+        
+        toast({
+          title: 'Payment Confirmed',
+          description: 'Your units update is pending admin verification. Units will show as vacant once payment is confirmed.',
+        });
+      } catch (error) {
+        console.error('Error updating units:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Update Failed',
+          description: 'Could not update available units. Please try again.',
+        });
+      } finally {
+        setUpdatingUnitsId(null);
+        setPendingUnitAdjustment(null);
+      }
+    }
+  };
+
+  const getPropertyTypeForPayment = () => {
+    if (pendingStatusChange) {
+      return pendingStatusChange.propertyType;
+    }
+    if (pendingUnitAdjustment) {
+      return pendingUnitAdjustment.propertyType;
+    }
+    return '';
+  };
 
   return (
     <>
@@ -401,6 +520,14 @@ export default function MyListingsPage() {
           onClose={() => setIsModalOpen(false)}
         />
       )}
+      
+      <VacancyPaymentModal
+        open={showPaymentModal}
+        onOpenChange={setShowPaymentModal}
+        propertyType={getPropertyTypeForPayment()}
+        onPaymentConfirmed={handlePaymentConfirmed}
+        isLoading={updatingStatusId !== null || updatingUnitsId !== null}
+      />
     </div>
     </>
   );
