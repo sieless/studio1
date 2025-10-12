@@ -214,7 +214,7 @@ export function UsersManagementTable() {
   }
 
   async function handleRejectLandlord(user: UserProfile) {
-    const feedback = window.prompt('Provide feedback for the landlord (shared with the user):', 'Please upload clearer proof of ownership.');
+    const feedback = window.prompt('Provide feedback for the landlord (shared with the user):', 'Please provide additional property details.');
     if (feedback === null) {
       return;
     }

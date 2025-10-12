@@ -21,16 +21,47 @@ interface VacancyPaymentModalProps {
 const getPaymentAmount = (propertyType: string): number => {
   const type = propertyType.toLowerCase();
   
-  if (type.includes('single') || type.includes('hostel') || type.includes('bedsitter')) {
-    return 300;
-  }
-  
-  if (type.includes('1 bedroom') || type.includes('2 bedroom')) {
+  if (type.includes('bedsitter')) {
     return 500;
   }
   
-  // All other types (3BR+, houses, commercial, etc.)
-  return 800;
+  if (type.includes('single')) {
+    return 300;
+  }
+  
+  if (
+    type.includes('1 bedroom') ||
+    type.includes('one bedroom') ||
+    type.includes('1 bed') ||
+    type.includes('one bed')
+  ) {
+    return 800;
+  }
+
+  if (
+    type.includes('2 bedroom') ||
+    type.includes('two bedroom') ||
+    type.includes('2 bed') ||
+    type.includes('two bed')
+  ) {
+    return 1000;
+  }
+
+  if (
+    type.includes('3 bedroom') ||
+    type.includes('three bedroom') ||
+    type.includes('3 bed') ||
+    type.includes('three bed') ||
+    type.includes('business')
+  ) {
+    return 1500;
+  }
+
+  if (type.includes('hostel') || type.includes('house')) {
+    return 1500;
+  }
+
+  return 1500;
 };
 
 export function VacancyPaymentModal({

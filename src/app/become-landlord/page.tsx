@@ -29,9 +29,16 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Building2, CheckCircle2, FileWarning, Loader2, ShieldCheck, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { ImageUpload } from '@/components/image-upload';
 import { useCurrentUserProfile } from '@/hooks/use-user-profile';
 import type { LandlordApplication } from '@/types';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { houseTypes, locations } from '@/lib/constants';
 
 type ApplicationFormState = {
   propertyName: string;
@@ -39,8 +46,6 @@ type ApplicationFormState = {
   propertyType: string;
   totalUnits: string;
   availableUnits: string;
-  idDocumentUrls: string[];
-  ownershipProofUrls: string[];
   additionalNotes: string;
 };
 
@@ -50,8 +55,6 @@ const defaultForm: ApplicationFormState = {
   propertyType: '',
   totalUnits: '',
   availableUnits: '',
-  idDocumentUrls: [],
-  ownershipProofUrls: [],
   additionalNotes: '',
 };
 
@@ -67,6 +70,20 @@ export default function BecomeLandlordPage() {
   const [existingApplication, setExistingApplication] = useState<LandlordApplication | null>(null);
   const [applicationsLoading, setApplicationsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'application'>('overview');
+  const propertyTypeOptions = useMemo(() => {
+    const base = houseTypes.filter((type) => type !== 'All');
+    if (form.propertyType && !base.includes(form.propertyType)) {
+      return [form.propertyType, ...base];
+    }
+    return base;
+  }, [form.propertyType]);
+  const locationOptions = useMemo(() => {
+    const base = locations.filter((location) => location !== 'All Counties');
+    if (form.propertyLocation && !base.includes(form.propertyLocation)) {
+      return [form.propertyLocation, ...base];
+    }
+    return base;
+  }, [form.propertyLocation]);
 
   useEffect(() => {
     if (isUserLoading) return;
@@ -118,8 +135,6 @@ export default function BecomeLandlordPage() {
       propertyType: existingApplication.propertyType || '',
       totalUnits: existingApplication.totalUnits?.toString() || '',
       availableUnits: existingApplication.availableUnits?.toString() || '',
-      idDocumentUrls: existingApplication.idDocumentUrl ? [existingApplication.idDocumentUrl] : [],
-      ownershipProofUrls: existingApplication.ownershipProofUrl ? [existingApplication.ownershipProofUrl] : [],
       additionalNotes: existingApplication.additionalNotes || '',
     });
   }, [existingApplication]);
@@ -153,10 +168,10 @@ export default function BecomeLandlordPage() {
       return;
     }
 
-    if (form.idDocumentUrls.length === 0 || form.ownershipProofUrls.length === 0) {
+    if (!form.propertyType || !form.propertyLocation) {
       toast({
-        title: 'Supporting documents required',
-        description: 'Upload both your ID and proof of property ownership.',
+        title: 'Missing details',
+        description: 'Select your property type and location from the dropdowns before submitting.',
         variant: 'destructive',
       });
       return;
@@ -176,8 +191,6 @@ export default function BecomeLandlordPage() {
         propertyType: form.propertyType,
         totalUnits: form.totalUnits ? Number(form.totalUnits) : undefined,
         availableUnits: form.availableUnits ? Number(form.availableUnits) : undefined,
-        idDocumentUrl: form.idDocumentUrls[0],
-        ownershipProofUrl: form.ownershipProofUrls[0],
         additionalNotes: form.additionalNotes || undefined,
         submittedAt: serverTimestamp(),
       } satisfies Record<string, unknown>;
@@ -340,7 +353,7 @@ export default function BecomeLandlordPage() {
             Become a verified landlord
           </CardTitle>
           <CardDescription>
-            Submit your property and ownership details once to unlock landlord capabilities.
+            Submit your property details once to unlock landlord capabilities.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -360,7 +373,7 @@ export default function BecomeLandlordPage() {
           <div className="flex flex-col gap-2">
             <h1 className="text-3xl font-bold text-foreground">Landlord Verification</h1>
             <p className="text-muted-foreground max-w-2xl">
-              Verify your identity and property ownership to start listing rentals on Key-2-Rent. This helps us maintain trust and safety for renters across Kenya.
+              Confirm your property details to start listing rentals on Key-2-Rent. This helps us maintain trust and safety for renters across Kenya.
             </p>
             <div className="flex items-center gap-2 text-sm">
               <span className="text-muted-foreground">Current status:</span>
@@ -395,10 +408,10 @@ export default function BecomeLandlordPage() {
                     </ul>
                   </div>
                   <div className="space-y-2">
-                    <h3 className="font-semibold">Verification documents</h3>
+                    <h3 className="font-semibold">Before you apply</h3>
                     <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
-                      <li>National ID or passport scan</li>
-                      <li>Proof of ownership or management authority</li>
+                      <li>Ensure your profile contact details are up to date</li>
+                      <li>Provide accurate pricing and vacancy information</li>
                       <li>Optional supporting notes for the admin team</li>
                     </ul>
                   </div>
@@ -411,7 +424,7 @@ export default function BecomeLandlordPage() {
                 <CardHeader>
                   <CardTitle>Submit verification details</CardTitle>
                   <CardDescription>
-                    Provide accurate details. Our admin team will review submissions within 24 hours.
+                    Provide accurate property information. Our admin team will review submissions within 24 hours.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -430,28 +443,44 @@ export default function BecomeLandlordPage() {
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="property-location">Location / Estate</Label>
-                        <Input
-                          id="property-location"
-                          placeholder="e.g. Machakos Town"
+                        <Select
                           value={form.propertyLocation}
-                          onChange={(event) => setForm((prev) => ({ ...prev, propertyLocation: event.target.value }))}
-                          required
+                          onValueChange={(value) => setForm((prev) => ({ ...prev, propertyLocation: value }))}
                           disabled={submitting || !canSubmit}
-                        />
+                        >
+                          <SelectTrigger id="property-location">
+                            <SelectValue placeholder="Select location" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {locationOptions.map((location) => (
+                              <SelectItem key={location} value={location}>
+                                {location}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
                         <Label htmlFor="property-type">Property Type</Label>
-                        <Input
-                          id="property-type"
-                          placeholder="e.g. Apartment, Bedsitter, Business Space"
+                        <Select
                           value={form.propertyType}
-                          onChange={(event) => setForm((prev) => ({ ...prev, propertyType: event.target.value }))}
-                          required
+                          onValueChange={(value) => setForm((prev) => ({ ...prev, propertyType: value }))}
                           disabled={submitting || !canSubmit}
-                        />
+                        >
+                          <SelectTrigger id="property-type">
+                            <SelectValue placeholder="Select property type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {propertyTypeOptions.map((type) => (
+                              <SelectItem key={type} value={type}>
+                                {type}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
@@ -462,7 +491,6 @@ export default function BecomeLandlordPage() {
                             min={1}
                             value={form.totalUnits}
                             onChange={(event) => setForm((prev) => ({ ...prev, totalUnits: event.target.value }))}
-                            required
                             disabled={submitting || !canSubmit}
                           />
                         </div>
@@ -474,37 +502,9 @@ export default function BecomeLandlordPage() {
                             min={0}
                             value={form.availableUnits}
                             onChange={(event) => setForm((prev) => ({ ...prev, availableUnits: event.target.value }))}
-                            required
                             disabled={submitting || !canSubmit}
                           />
                         </div>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-6 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>Upload your ID</Label>
-                        <ImageUpload
-                          images={form.idDocumentUrls}
-                          onChange={(urls) => setForm((prev) => ({ ...prev, idDocumentUrls: urls.slice(0, 1) }))}
-                          maxImages={1}
-                          className="bg-muted/40 p-4 rounded-md"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Clear photo or scan of your national ID or passport (JPEG/PNG).
-                        </p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Proof of ownership / authorization</Label>
-                        <ImageUpload
-                          images={form.ownershipProofUrls}
-                          onChange={(urls) => setForm((prev) => ({ ...prev, ownershipProofUrls: urls.slice(0, 1) }))}
-                          maxImages={1}
-                          className="bg-muted/40 p-4 rounded-md"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Upload a title deed, lease agreement, or authorization letter from the owner.
-                        </p>
                       </div>
                     </div>
 
