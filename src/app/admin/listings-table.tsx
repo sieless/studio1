@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc, updateDoc, query, where, serverTimestamp } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { type Listing } from '@/types';
 import {
@@ -33,7 +33,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Trash2, ExternalLink, Search, Loader2, Eye } from 'lucide-react';
+import { Trash2, ExternalLink, Search, Loader2, Eye, CheckCircle, Ban } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import Link from 'next/link';
 
@@ -44,11 +44,17 @@ export function ListingsManagementTable() {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [approvalFilter, setApprovalFilter] = useState('all');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const db = useFirestore();
   const { toast } = useToast();
+  const refreshAdminQueues = () => {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('admin-queue-refresh'));
+    }
+  };
 
   useEffect(() => {
     fetchListings();
@@ -77,8 +83,12 @@ export function ListingsManagementTable() {
       filtered = filtered.filter((listing) => listing.status === statusFilter);
     }
 
+    if (approvalFilter !== 'all') {
+      filtered = filtered.filter((listing) => (listing.approvalStatus || 'approved') === approvalFilter);
+    }
+
     setFilteredListings(filtered);
-  }, [searchTerm, typeFilter, statusFilter, listings]);
+  }, [searchTerm, typeFilter, statusFilter, approvalFilter, listings]);
 
   async function fetchListings() {
     try {
@@ -161,6 +171,87 @@ export function ListingsManagementTable() {
 
   const uniqueTypes = Array.from(new Set(listings.map((l) => l.type)));
 
+  async function completeListingNotification(referenceId: string, extra: Record<string, any> = {}) {
+    const notificationsRef = collection(db, 'admin_notifications');
+    const snapshot = await getDocs(query(notificationsRef, where('referenceId', '==', referenceId)));
+
+    await Promise.all(
+      snapshot.docs.map((docSnap) => updateDoc(doc(db, 'admin_notifications', docSnap.id), {
+        status: 'completed',
+        completedAt: serverTimestamp(),
+        ...extra,
+      }))
+    );
+  }
+
+  async function handleApproveListing(listing: Listing) {
+    setActionLoading(true);
+    try {
+      await updateDoc(doc(db, 'listings', listing.id), {
+        approvalStatus: 'approved',
+        adminFeedback: null,
+        pendingVacancyPayment: false,
+      });
+
+      await completeListingNotification(listing.id);
+
+      toast({
+        title: 'Listing approved',
+        description: `${listing.name || listing.type} is now visible to renters.`,
+      });
+
+      fetchListings();
+      refreshAdminQueues();
+    } catch (error) {
+      console.error('Error approving listing:', error);
+      toast({
+        title: 'Approval failed',
+        description: 'Could not approve this listing.',
+        variant: 'destructive',
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleRejectListing(listing: Listing) {
+    const feedback = window.prompt('Provide feedback for the landlord (shared with user):', 'Please update the listing details.');
+    if (feedback === null) {
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      await updateDoc(doc(db, 'listings', listing.id), {
+        approvalStatus: 'rejected',
+        adminFeedback: feedback,
+      });
+
+      await completeListingNotification(listing.id, {
+        metadata: {
+          feedback,
+        },
+      });
+
+      toast({
+        title: 'Listing rejected',
+        description: 'Landlord has been notified with your feedback.',
+      });
+
+      fetchListings();
+      refreshAdminQueues();
+    } catch (error) {
+      console.error('Error rejecting listing:', error);
+      toast({
+        title: 'Action failed',
+        description: 'Could not reject this listing.',
+        variant: 'destructive',
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
   if (loading) {
     return (
       <Card>
@@ -215,6 +306,18 @@ export function ListingsManagementTable() {
                 <SelectItem value="Available Soon">Available Soon</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={approvalFilter} onValueChange={setApprovalFilter}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Filter by approval" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Approvals</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="approved">Approved</SelectItem>
+                <SelectItem value="auto">Auto</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
         <CardContent>
@@ -226,6 +329,7 @@ export function ListingsManagementTable() {
                   <TableHead>Type</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead>Price</TableHead>
+                  <TableHead>Approval</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Posted</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -249,13 +353,33 @@ export function ListingsManagementTable() {
                       </TableCell>
                       <TableCell>{listing.location}</TableCell>
                       <TableCell>Ksh {listing.price.toLocaleString()}</TableCell>
+                          <TableCell>
+                            {listing.approvalStatus === 'pending' && (
+                              <Badge variant="secondary" className="bg-amber-500/20 text-amber-700">
+                                Pending
+                              </Badge>
+                            )}
+                            {listing.approvalStatus === 'approved' && (
+                              <Badge variant="default" className="bg-green-600">
+                                Approved
+                              </Badge>
+                            )}
+                            {listing.approvalStatus === 'auto' && (
+                              <Badge variant="outline">Auto</Badge>
+                            )}
+                            {listing.approvalStatus === 'rejected' && (
+                              <Badge variant="destructive">Rejected</Badge>
+                            )}
+                          </TableCell>
                       <TableCell>
                         <Select
                           value={listing.status}
                           onValueChange={(value) =>
                             handleUpdateStatus(listing.id, value as any)
                           }
-                          disabled={actionLoading}
+                              disabled={
+                                actionLoading || !['approved', 'auto'].includes((listing.approvalStatus || 'approved') as string)
+                              }
                         >
                           <SelectTrigger className="w-[140px]">
                             <SelectValue />
@@ -270,6 +394,26 @@ export function ListingsManagementTable() {
                       <TableCell>{formatDate(listing.createdAt)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
+                              {listing.approvalStatus === 'pending' && (
+                                <>
+                                  <Button
+                                    variant="default"
+                                    size="sm"
+                                    onClick={() => handleApproveListing(listing)}
+                                    disabled={actionLoading}
+                                  >
+                                    <CheckCircle className="mr-1 h-3 w-3" /> Approve
+                                  </Button>
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => handleRejectListing(listing)}
+                                    disabled={actionLoading}
+                                  >
+                                    <Ban className="mr-1 h-3 w-3" /> Reject
+                                  </Button>
+                                </>
+                              )}
                           <Button variant="outline" size="sm" asChild>
                             <Link href={`/listings/${listing.id}`} target="_blank">
                               <Eye className="mr-1 h-3 w-3" />

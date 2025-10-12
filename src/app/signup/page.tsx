@@ -7,7 +7,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword, updateProfile, RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from 'firebase/auth';
-import { setDoc, doc } from 'firebase/firestore';
+import { setDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,9 +20,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Mail, Phone, Eye, EyeOff } from 'lucide-react';
+import { Mail, Phone, Eye, EyeOff, Building2, User } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Logo } from '@/components/logo';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import type { UserAccountType } from '@/types';
 
 declare global {
   interface Window {
@@ -41,11 +43,61 @@ export default function SignupPage() {
   const [otpSent, setOtpSent] = useState(false);
   const [activeTab, setActiveTab] = useState('email');
   const [showPassword, setShowPassword] = useState(false);
+  const [accountType, setAccountType] = useState<UserAccountType>('tenant');
 
   const auth = useAuth();
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+
+  const renderAccountTypeSelector = (prefix: string) => (
+    <div className="grid gap-2">
+      <Label>Account Type</Label>
+      <RadioGroup
+        value={accountType}
+        onValueChange={(value) => setAccountType(value as UserAccountType)}
+        className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+      >
+        <div className="relative">
+          <RadioGroupItem
+            value="tenant"
+            id={`${prefix}-tenant`}
+            className="sr-only peer"
+          />
+          <Label
+            htmlFor={`${prefix}-tenant`}
+            className="border rounded-md p-3 flex items-center gap-3 cursor-pointer transition-colors peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5"
+          >
+            <User className="h-4 w-4" />
+            Tenant / Renter
+          </Label>
+        </div>
+        <div className="relative">
+          <RadioGroupItem
+            value="landlord"
+            id={`${prefix}-landlord`}
+            className="sr-only peer"
+          />
+          <Label
+            htmlFor={`${prefix}-landlord`}
+            className="border rounded-md p-3 flex items-center gap-3 cursor-pointer transition-colors peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary/5"
+          >
+            <Building2 className="h-4 w-4" />
+            Landlord / Property Owner
+          </Label>
+        </div>
+      </RadioGroup>
+      {accountType === 'landlord' ? (
+        <p className="text-xs text-muted-foreground">
+          We will review your landlord verification after sign up. You can track the status in the Become a Landlord portal.
+        </p>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          You can upgrade later from your profile if you start managing properties.
+        </p>
+      )}
+    </div>
+  );
 
   const setupRecaptcha = () => {
     if (!window.recaptchaVerifier) {
@@ -98,10 +150,14 @@ export default function SignupPage() {
         id: user.uid,
         listings: [],
         canViewContacts: true, // FREE LAUNCH: All users can view contacts
+        phoneNumber: user.phoneNumber,
+        accountType,
+        landlordApprovalStatus: accountType === 'landlord' ? 'pending' : 'none',
+        createdAt: serverTimestamp(),
       });
 
       toast({ title: 'Account Created', description: 'You have been successfully signed up.' });
-      router.push('/');
+      router.push(accountType === 'landlord' ? '/become-landlord' : '/');
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Sign Up Failed', description: error.message });
       setIsLoading(false);
@@ -125,10 +181,14 @@ export default function SignupPage() {
         id: user.uid,
         listings: [],
         canViewContacts: true, // FREE LAUNCH: All users can view contacts
+        phoneNumber: null,
+        accountType,
+        landlordApprovalStatus: accountType === 'landlord' ? 'pending' : 'none',
+        createdAt: serverTimestamp(),
       });
 
       toast({ title: 'Account Created', description: 'You have been successfully signed up.' });
-      router.push('/');
+      router.push(accountType === 'landlord' ? '/become-landlord' : '/');
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Sign Up Failed', description: error.message });
       setIsLoading(false);
@@ -159,6 +219,7 @@ export default function SignupPage() {
                   <Label htmlFor="name-email">Name</Label>
                   <Input id="name-email" placeholder="John Doe" required value={name} onChange={(e) => setName(e.target.value)} disabled={isLoading} />
                 </div>
+                {renderAccountTypeSelector('account-email')}
                 <div className="grid gap-2">
                   <Label htmlFor="email">Email</Label>
                   <Input id="email" type="email" placeholder="m@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} disabled={isLoading} />
@@ -201,6 +262,7 @@ export default function SignupPage() {
                     <Label htmlFor="name-phone">Name</Label>
                     <Input id="name-phone" placeholder="John Doe" required value={name} onChange={(e) => setName(e.target.value)} disabled={isLoading} />
                   </div>
+                  {renderAccountTypeSelector('account-phone')}
                   <div className="grid gap-2">
                     <Label htmlFor="phone">Phone Number</Label>
                     <Input id="phone" type="tel" placeholder="254712345678" required value={phone} onChange={(e) => setPhone(e.target.value)} disabled={isLoading} />

@@ -1,6 +1,8 @@
 'use server';
 import { type Timestamp } from 'firebase/firestore';
 
+export type ListingApprovalStatus = 'pending' | 'approved' | 'rejected' | 'auto';
+
 export type Listing = {
   id: string;
   userId: string;
@@ -35,6 +37,8 @@ export type Listing = {
 
   // Vacancy payment system
   pendingVacancyPayment?: boolean;   // Listing awaiting payment verification for vacancy status
+  approvalStatus?: ListingApprovalStatus; // Admin approval workflow state
+  adminFeedback?: string;             // Feedback when rejected or requires changes
 };
 
 export type ListingFormData = {
@@ -53,6 +57,9 @@ export type ListingFormData = {
   availableUnits?: number | '';
 }
 
+export type UserAccountType = 'tenant' | 'landlord';
+export type LandlordApprovalStatus = 'none' | 'pending' | 'approved' | 'rejected';
+
 export type UserProfile = {
     id: string;
     email: string;
@@ -61,6 +68,11 @@ export type UserProfile = {
     canViewContacts: boolean;
     createdAt?: Timestamp;
     suspended?: boolean;
+    accountType: UserAccountType;
+    landlordApprovalStatus: LandlordApprovalStatus;
+    phoneNumber?: string;
+    preferredCounty?: string;
+    landlordApplicationId?: string;
 }
 
 export type AdminStats = {
@@ -71,6 +83,44 @@ export type AdminStats = {
     listingsByStatus: Record<string, number>;
     recentUsers: number;
     recentListings: number;
+}
+
+export type LandlordApplicationStatus = 'pending' | 'approved' | 'rejected';
+
+export type LandlordApplication = {
+    id: string;
+    userId: string;
+    userEmail?: string;
+    userName?: string;
+    accountType: UserAccountType;
+    status: LandlordApplicationStatus;
+    propertyName?: string;
+    propertyLocation?: string;
+    propertyType?: string;
+    totalUnits?: number;
+    availableUnits?: number;
+    idDocumentUrl?: string;
+    ownershipProofUrl?: string;
+    additionalNotes?: string;
+    submittedAt: Timestamp;
+    reviewedAt?: Timestamp;
+    reviewerId?: string;
+    reviewerEmail?: string;
+    adminFeedback?: string;
+}
+
+export type AdminNotificationType = 'LANDLORD_APPLICATION' | 'LISTING_APPROVAL' | 'PAYMENT_DECLARATION';
+
+export type AdminNotification = {
+    id: string;
+    type: AdminNotificationType;
+    referenceId: string;
+    title: string;
+    message: string;
+    status: 'pending' | 'completed';
+    createdAt: Timestamp;
+    completedAt?: Timestamp;
+    metadata?: Record<string, any>;
 }
 
 /**

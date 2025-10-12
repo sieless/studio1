@@ -79,14 +79,40 @@ service cloud.firestore {
                request.auth.token.email == 'titwzmaihya@gmail.com';
       }
 
+      function landlordApprovalStatus(uid) {
+        return get(/databases/$(database)/documents/users/$(uid)).data.landlordApprovalStatus;
+      }
+
+      function canCreateListing() {
+        return request.auth != null && landlordApprovalStatus(request.auth.uid) == 'approved';
+      }
+
+      function isUnitConfigurationValid(data) {
+        return !(data.totalUnits != null && data.availableUnits != null && data.availableUnits > data.totalUnits);
+      }
+
       allow get: if true;
       allow list: if true;
       allow create: if isSignedIn() &&
+        canCreateListing() &&
         request.resource.data.userId == request.auth.uid &&
-        request.resource.data.keys().hasAll(['type', 'location', 'price', 'contact', 'status', 'userId', 'createdAt', 'images']);
-      allow update: if (isSignedIn() &&
+        request.resource.data.keys().hasAll(['type', 'location', 'price', 'contact', 'status', 'userId', 'createdAt', 'images']) &&
+        isUnitConfigurationValid(request.resource.data) &&
+        (
+          !request.resource.data.approvalStatus ||
+          request.resource.data.approvalStatus in ['pending', 'auto']
+        );
+      allow update: if (
+        isSignedIn() &&
         resource.data.userId == request.auth.uid &&
-        request.resource.data.userId == resource.data.userId) || isAdmin(); // Admin can update any listing
+        request.resource.data.userId == resource.data.userId &&
+        isUnitConfigurationValid(request.resource.data) &&
+        (
+          request.resource.data.approvalStatus == resource.data.approvalStatus ||
+          request.resource.data.approvalStatus == 'pending' ||
+          request.resource.data.approvalStatus == null
+        )
+      ) || isAdmin();
       allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin(); // Admin can delete any listing
     }
 
@@ -144,6 +170,45 @@ service cloud.firestore {
       allow create: if request.auth != null &&
         request.resource.data.userId == request.auth.uid;
       allow update: if request.auth != null; // Allow server callbacks
+    }
+
+    /**
+     * @description Landlord verification applications
+     */
+    match /landlord_applications/{applicationId} {
+      function isAdmin() {
+        return request.auth != null &&
+               request.auth.token.email == 'titwzmaihya@gmail.com';
+      }
+
+      function isOwner() {
+        return request.auth != null && resource.data.userId == request.auth.uid;
+      }
+
+      allow get: if isOwner() || isAdmin();
+      allow list: if isAdmin();
+      allow create: if request.auth != null &&
+        request.resource.data.userId == request.auth.uid;
+      allow update: if (
+        isAdmin() ||
+        (request.auth != null && resource.data.userId == request.auth.uid && resource.data.status != 'approved')
+      );
+    }
+
+    /**
+     * @description Admin notifications queue
+     */
+    match /admin_notifications/{notificationId} {
+      function isAdmin() {
+        return request.auth != null &&
+               request.auth.token.email == 'titwzmaihya@gmail.com';
+      }
+
+      allow read: if isAdmin();
+      allow list: if isAdmin();
+      allow create: if request.auth != null;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
     }
 
     /**

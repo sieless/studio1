@@ -40,6 +40,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getPropertyIcon, getStatusClass } from '@/lib/utils';
 import { DefaultPlaceholder } from '@/components/default-placeholder';
 import { useFeatureEnabled } from '@/hooks/use-platform-settings';
+import { buildWhatsAppLink } from '@/lib/whatsapp';
 
 
 function ListingDetailSkeleton() {
@@ -115,7 +116,15 @@ export default function ListingDetailPage() {
 
   const handleWhatsApp = () => {
     const message = `Hi, I'm interested in your ${listing?.type} in ${listing?.location} listed at KES ${listing?.price.toLocaleString()}/month on Key-2-Rent.`;
-    const whatsappUrl = `https://wa.me/${listing?.contact.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(message)}`;
+    const whatsappUrl = buildWhatsAppLink(listing?.contact, message);
+    if (!whatsappUrl) {
+      toast({
+        title: 'WhatsApp unavailable',
+        description: 'WhatsApp Business link is not configured.',
+        variant: 'destructive',
+      });
+      return;
+    }
     window.open(whatsappUrl, '_blank');
   };
 

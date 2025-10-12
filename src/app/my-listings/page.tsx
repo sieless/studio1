@@ -16,6 +16,8 @@ import {
   updateDoc,
   arrayRemove,
   orderBy,
+  addDoc,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 import { type Listing } from '@/types';
@@ -42,6 +44,8 @@ import { getPropertyIcon, getStatusClass } from '@/lib/utils';
 import { DefaultPlaceholder } from '@/components/default-placeholder';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LandlordAnalytics } from './analytics';
+import { useCurrentUserProfile } from '@/hooks/use-user-profile';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 function ListingSkeleton() {
   return (
@@ -87,6 +91,9 @@ export default function MyListingsPage() {
   const db = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+  const { profile, isLoading: profileLoading } = useCurrentUserProfile();
+  const canPostListing = !!profile && profile.landlordApprovalStatus === 'approved';
+  const landlordStatus = profile?.landlordApprovalStatus;
 
 
   useEffect(() => {
@@ -266,7 +273,25 @@ export default function MyListingsPage() {
         // Set as Occupied with pending payment flag instead of Vacant
         await updateDoc(listingRef, { 
           status: 'Occupied',
-          pendingVacancyPayment: true 
+          pendingVacancyPayment: true,
+          approvalStatus: 'pending'
+        });
+
+        const listingDetails = listings.find((l) => l.id === listingId);
+        await addDoc(collection(db, 'admin_notifications'), {
+          type: 'LISTING_APPROVAL',
+          referenceId: listingId,
+          title: 'Vacancy payment verification',
+          message: `${profile?.name || user?.email || user?.uid} requested vacancy activation for ${listingDetails?.name || listingDetails?.type || 'a listing'}.`,
+          status: 'pending',
+          createdAt: serverTimestamp(),
+          metadata: {
+            listingId,
+            userId: user.uid,
+            propertyType: listingDetails?.type,
+            location: listingDetails?.location,
+            pendingVacancyPayment: true,
+          },
         });
         
         toast({
@@ -297,7 +322,25 @@ export default function MyListingsPage() {
         await updateDoc(listingRef, {
           availableUnits: newAvailable,
           status: 'Occupied', // Keep as occupied until admin approves
-          pendingVacancyPayment: true
+          pendingVacancyPayment: true,
+          approvalStatus: 'pending'
+        });
+
+        const listingDetails = listings.find((l) => l.id === listingId);
+        await addDoc(collection(db, 'admin_notifications'), {
+          type: 'LISTING_APPROVAL',
+          referenceId: listingId,
+          title: 'Units awaiting approval',
+          message: `${profile?.name || user?.email || user?.uid} increased available units for ${listingDetails?.name || listingDetails?.type || 'a listing'}.`,
+          status: 'pending',
+          createdAt: serverTimestamp(),
+          metadata: {
+            listingId,
+            userId: user.uid,
+            propertyType: listingDetails?.type,
+            location: listingDetails?.location,
+            availableUnits: newAvailable,
+          },
         });
         
         toast({
@@ -328,14 +371,40 @@ export default function MyListingsPage() {
     return '';
   };
 
+  const handleOpenModal = () => {
+    if (!canPostListing) {
+      toast({
+        variant: 'destructive',
+        title: 'Landlord verification required',
+        description: landlordStatus === 'pending'
+          ? 'Your landlord account is awaiting approval. We will notify you once you can post listings.'
+          : 'Complete the landlord verification process to start posting listings.',
+      });
+      router.push('/become-landlord');
+      return;
+    }
+
+    setIsModalOpen(true);
+  };
+
   return (
     <>
     <div className="flex flex-col min-h-screen">
-      <Header onPostClick={() => setIsModalOpen(true)} />
+      <Header onPostClick={handleOpenModal} />
       <main className="flex-grow max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 w-full">
+        {user && !profileLoading && !canPostListing && (
+          <Alert className="mb-6">
+            <AlertTitle>Landlord verification required</AlertTitle>
+            <AlertDescription>
+              {landlordStatus === 'pending'
+                ? 'Your landlord verification is under review. You will be able to post listings once it is approved.'
+                : 'Complete the landlord verification form to unlock listing creation.'}
+            </AlertDescription>
+          </Alert>
+        )}
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-foreground">My Listings</h1>
-          <Button onClick={() => setIsModalOpen(true)}>
+          <Button onClick={handleOpenModal}>
             <PlusCircle className="mr-2 h-4 w-4" /> Add New Listing
           </Button>
         </div>
@@ -398,6 +467,21 @@ export default function MyListingsPage() {
                   <p className="text-xl font-bold text-foreground">
                     Ksh {listing.price.toLocaleString()}/month
                   </p>
+                  {listing.approvalStatus === 'pending' && (
+                    <Badge variant="outline" className="mt-2 text-xs uppercase tracking-wide">
+                      Pending admin approval
+                    </Badge>
+                  )}
+                  {listing.approvalStatus === 'rejected' && (
+                    <Badge variant="destructive" className="mt-2 text-xs uppercase tracking-wide">
+                      Requires changes
+                    </Badge>
+                  )}
+                  {listing.approvalStatus === 'rejected' && listing.adminFeedback && (
+                    <p className="mt-2 text-xs text-destructive/80">
+                      {listing.adminFeedback}
+                    </p>
+                  )}
                    <div className="flex items-center justify-between text-sm text-muted-foreground pt-2">
                     <p className="font-semibold flex items-center gap-2">
                       <MapPin className="w-4 h-4" /> {listing.location}
@@ -501,7 +585,7 @@ export default function MyListingsPage() {
                 <p className="text-muted-foreground mt-2">
                   Click the button below to add your first property!
                 </p>
-                <Button onClick={() => setIsModalOpen(true)} className="mt-6">
+                <Button onClick={handleOpenModal} className="mt-6">
                     <PlusCircle className="mr-2 h-4 w-4" /> Post a Listing
                 </Button>
               </div>

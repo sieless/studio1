@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Copy, Phone, MessageSquare, CheckCircle2, AlertCircle, ExternalLink } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { buildWhatsAppLink } from '@/lib/whatsapp';
 
 interface VacancyPaymentModalProps {
   open: boolean;
@@ -64,10 +65,18 @@ export function VacancyPaymentModal({
   };
 
   const handleWhatsApp = () => {
-    const message = encodeURIComponent(
-      `Hi, I'm paying KES ${amount} for vacancy listing on Key-2-Rent. Property type: ${propertyType}. M-Pesa transaction code will follow.`
-    );
-    const url = `https://wa.me/254${contactNumber.slice(1)}?text=${message}`;
+    const message = `Hi, I'm paying KES ${amount} for vacancy listing on Key-2-Rent. Property type: ${propertyType}. M-Pesa transaction code will follow.`;
+    const url = buildWhatsAppLink(contactNumber, message);
+
+    if (!url) {
+      toast({
+        title: "WhatsApp unavailable",
+        description: "WhatsApp Business link is not configured yet.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     window.open(url, '_blank');
   };
 

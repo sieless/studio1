@@ -17,6 +17,8 @@ import { useToast } from '@/hooks/use-toast';
 import { analyzeListingImage } from '@/app/actions';
 import { ImageUpload } from '@/components/image-upload';
 import { VacancyPaymentModal } from '@/components/vacancy-payment-modal';
+import { useCurrentUserProfile } from '@/hooks/use-user-profile';
+import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -48,7 +50,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { houseTypes, locations, allFeatureOptions } from '@/lib/constants';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Loader2, Wand2 } from 'lucide-react';
+import { Sparkles, Loader2, Wand2, ShieldAlert } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Textarea } from './ui/textarea';
@@ -98,6 +100,11 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
   const { toast } = useToast();
   const { user } = useUser();
   const db = useFirestore();
+  const { profile, isLoading: profileLoading } = useCurrentUserProfile();
+  const router = useRouter();
+  const canCreateListings = !!profile && profile.landlordApprovalStatus === 'approved';
+  const landlordStatus = profile?.landlordApprovalStatus;
+  const isDisallowed = !profileLoading && !canCreateListings;
 
   const form = useForm<ListingData>({
     resolver: zodResolver(listingSchema),
@@ -162,6 +169,16 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
       return;
     }
 
+    if (!canCreateListings) {
+      toast({
+        variant: 'destructive',
+        title: 'Landlord verification required',
+        description: 'Complete the landlord verification process before posting listings.',
+      });
+      router.push('/become-landlord');
+      return;
+    }
+
     // Check if status is Vacant - require payment
     if (data.status === 'Vacant') {
       setPendingListingData(data);
@@ -176,6 +193,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
         ...data,
         userId: user.uid,
         createdAt: serverTimestamp(),
+        approvalStatus: canCreateListings && data.status !== 'Vacant' ? 'auto' : 'pending',
       };
 
       if (!listingPayload.name) delete listingPayload.name;
@@ -190,10 +208,41 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
         }
       });
 
+      if (
+        listingPayload.totalUnits != null &&
+        listingPayload.availableUnits != null &&
+        listingPayload.availableUnits > listingPayload.totalUnits
+      ) {
+        toast({
+          variant: 'destructive',
+          title: 'Invalid unit count',
+          description: 'Available units cannot exceed total units.',
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       const docRef = await addDoc(collection(db, 'listings'), listingPayload);
 
       const userRef = doc(db, 'users', user.uid);
       updateDocumentNonBlocking(userRef, { listings: arrayUnion(docRef.id) });
+
+      if (listingPayload.approvalStatus === 'pending') {
+        await addDoc(collection(db, 'admin_notifications'), {
+          type: 'LISTING_APPROVAL',
+          referenceId: docRef.id,
+          title: 'Listing requires approval',
+          message: `${profile?.name || user.email || user.uid} submitted ${listingPayload.name || listingPayload.type}.`,
+          status: 'pending',
+          createdAt: serverTimestamp(),
+          metadata: {
+            listingId: docRef.id,
+            userId: user.uid,
+            propertyType: listingPayload.type,
+            location: listingPayload.location,
+          },
+        });
+      }
 
       toast({
         title: 'Success!',
@@ -219,6 +268,16 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
       return;
     }
 
+    if (!canCreateListings) {
+      toast({
+        variant: 'destructive',
+        title: 'Landlord verification required',
+        description: 'Complete verification before activating vacancy payments.',
+      });
+      router.push('/become-landlord');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -229,6 +288,7 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
         // Set as Occupied with pending payment flag instead of Vacant
         status: 'Occupied',
         pendingVacancyPayment: true,
+        approvalStatus: 'pending',
       };
 
       if (!listingPayload.name) delete listingPayload.name;
@@ -243,10 +303,40 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
         }
       });
 
+      if (
+        listingPayload.totalUnits != null &&
+        listingPayload.availableUnits != null &&
+        listingPayload.availableUnits > listingPayload.totalUnits
+      ) {
+        toast({
+          variant: 'destructive',
+          title: 'Invalid unit count',
+          description: 'Available units cannot exceed total units.',
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       const docRef = await addDoc(collection(db, 'listings'), listingPayload);
 
       const userRef = doc(db, 'users', user.uid);
       updateDocumentNonBlocking(userRef, { listings: arrayUnion(docRef.id) });
+
+      await addDoc(collection(db, 'admin_notifications'), {
+        type: 'LISTING_APPROVAL',
+        referenceId: docRef.id,
+        title: 'Vacancy payment verification',
+        message: `${profile?.name || user.email || user.uid} marked a listing as vacant awaiting payment verification.`,
+        status: 'pending',
+        createdAt: serverTimestamp(),
+        metadata: {
+          listingId: docRef.id,
+          userId: user.uid,
+          propertyType: listingPayload.type,
+          location: listingPayload.location,
+          pendingVacancyPayment: true,
+        },
+      });
 
       toast({
         title: 'Listing Created!',
@@ -281,11 +371,39 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
             </DialogDescription>
           </DialogHeader>
           <div className="flex-grow overflow-y-auto pr-6 pl-6 -mr-6">
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-6"
-              >
+            {profileLoading ? (
+              <div className="flex flex-col items-center justify-center py-16">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : isDisallowed ? (
+              <div className="space-y-6 py-6">
+                <Alert variant="destructive">
+                  <AlertTitle className="flex items-center gap-2">
+                    <ShieldAlert className="h-4 w-4" />
+                    Landlord verification required
+                  </AlertTitle>
+                  <AlertDescription>
+                    {landlordStatus === 'pending'
+                      ? 'Your landlord verification is still pending approval. Once approved you will be able to create new listings.'
+                      : 'You need to complete the landlord verification process before you can post listings.'}
+                  </AlertDescription>
+                </Alert>
+                <div className="flex flex-wrap gap-3">
+                  <Button onClick={() => router.push('/become-landlord')} className="flex items-center gap-2">
+                    <ShieldAlert className="h-4 w-4" />
+                    Manage landlord verification
+                  </Button>
+                  <Button variant="outline" onClick={onClose}>
+                    Close
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Form {...form}>
+                <form
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="space-y-6"
+                >
                  <FormField
                     control={form.control}
                     name="name"
@@ -701,20 +819,21 @@ export function AddListingModal({ isOpen, onClose }: AddListingModalProps) {
                     </FormItem>
                   )}
                 />
-                <DialogFooter className="pt-6 mt-6 border-t -mb-6 pb-6 -mx-6 px-6 bg-background sticky bottom-0 z-10">
-                  <DialogClose asChild>
-                    <Button type="button" variant="outline">
-                      Cancel
+                  <DialogFooter className="pt-6 mt-6 border-t -mb-6 pb-6 -mx-6 px-6 bg-background sticky bottom-0 z-10">
+                    <DialogClose asChild>
+                      <Button type="button" variant="outline">
+                        Cancel
+                      </Button>
+                    </DialogClose>
+                    <Button type="submit" disabled={isSubmitting}>
+                      {isSubmitting ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : 'Post Listing'}
                     </Button>
-                  </DialogClose>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : 'Post Listing'}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
+                  </DialogFooter>
+                </form>
+              </Form>
+            )}
           </div>
         </DialogContent>
       </Dialog>

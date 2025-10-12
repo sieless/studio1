@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { signOut } from 'firebase/auth';
 import { useAuth, useUser } from '@/firebase';
+import { useCurrentUserProfile } from '@/hooks/use-user-profile';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -28,6 +29,7 @@ export function Header({ onPostClick }: HeaderProps) {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
   const router = useRouter();
+  const { profile, isLoading: profileLoading } = useCurrentUserProfile();
 
   const handleSignOut = async () => {
     if (!auth) return;
@@ -43,6 +45,9 @@ export function Header({ onPostClick }: HeaderProps) {
       .join('');
   };
 
+  const canPostListing = !!profile && profile.landlordApprovalStatus === 'approved';
+  const showLandlordUpgrade = !!user && !profileLoading && !canPostListing;
+
   return (
     <header className="bg-card shadow-sm sticky top-0 z-40">
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
@@ -50,13 +55,25 @@ export function Header({ onPostClick }: HeaderProps) {
           <Logo iconClassName="text-primary" />
         </Link>
         <div className="flex items-center gap-2 sm:gap-4">
-          {user && (
+          {user && !profileLoading && canPostListing && (
             <Button
               onClick={onPostClick}
               className="font-semibold shadow-md hover:bg-primary/90 transition-all duration-300 transform hover:-translate-y-0.5 hidden sm:flex"
             >
               <PlusCircle className="mr-2 h-5 w-5" />
               Post a Listing
+            </Button>
+          )}
+          {user && profileLoading && (
+            <Skeleton className="h-10 w-32 hidden sm:block" />
+          )}
+          {showLandlordUpgrade && (
+            <Button
+              onClick={() => router.push('/become-landlord')}
+              variant="outline"
+              className="hidden sm:flex"
+            >
+              Become a Landlord
             </Button>
           )}
           {!user && !isUserLoading && (
@@ -115,6 +132,14 @@ export function Header({ onPostClick }: HeaderProps) {
                     <span>My Listings</span>
                   </Link>
                 </DropdownMenuItem>
+                {showLandlordUpgrade && (
+                  <DropdownMenuItem asChild>
+                    <Link href="/become-landlord">
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      <span>Become a Landlord</span>
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem asChild>
                    <Link href="/favorites">
                     <Heart className="mr-2 h-4 w-4" />
@@ -156,10 +181,20 @@ export function Header({ onPostClick }: HeaderProps) {
               <DropdownMenuContent align="end">
                  {user && (
                     <>
-                      <DropdownMenuItem onClick={onPostClick}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        <span>Post Listing</span>
-                      </DropdownMenuItem>
+                      {canPostListing && (
+                        <DropdownMenuItem onClick={onPostClick}>
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          <span>Post Listing</span>
+                        </DropdownMenuItem>
+                      )}
+                      {showLandlordUpgrade && (
+                        <DropdownMenuItem asChild>
+                          <Link href="/become-landlord">
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            <span>Become a Landlord</span>
+                          </Link>
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem asChild>
                         <Link href="/favorites">
                           <Heart className="mr-2 h-4 w-4" />

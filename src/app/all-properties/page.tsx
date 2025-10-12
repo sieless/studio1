@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useCurrentUserProfile } from '@/hooks/use-user-profile';
 
 function LoadingSkeletons() {
   return (
@@ -68,6 +69,8 @@ export default function AllPropertiesPage() {
 
   const db = useFirestore();
   const { user, isUserLoading } = useUser();
+  const { profile, isLoading: profileLoading } = useCurrentUserProfile();
+  const canPostListing = !!profile && profile.landlordApprovalStatus === 'approved';
   const router = useRouter();
   const { toast } = useToast();
 
@@ -108,14 +111,34 @@ export default function AllPropertiesPage() {
         variant: 'destructive',
       });
       router.push('/login');
-    } else {
-      setIsModalOpen(true);
+      return;
     }
+
+    if (profileLoading) {
+      return;
+    }
+
+    if (!canPostListing) {
+      toast({
+        title: 'Landlord verification required',
+        description: 'Complete the landlord verification process before posting listings.',
+        variant: 'destructive',
+      });
+      router.push('/become-landlord');
+      return;
+    }
+
+    setIsModalOpen(true);
   };
 
   const filteredListings = useMemo(() => {
-    // Apply filters
-    const filtered = listings.filter(listing => {
+    // Only show approved listings
+    const visibleListings = listings.filter(listing => {
+      const approvalStatus = listing.approvalStatus ?? 'approved';
+      return approvalStatus === 'approved' || approvalStatus === 'auto';
+    });
+
+    const filtered = visibleListings.filter(listing => {
       const locationMatch =
         filters.location === 'All' || listing.location === filters.location;
       const typeMatch = filters.type === 'All' || listing.type === filters.type;
