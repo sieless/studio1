@@ -191,9 +191,16 @@ export default function BecomeLandlordPage() {
         propertyType: form.propertyType,
         totalUnits: form.totalUnits ? Number(form.totalUnits) : undefined,
         availableUnits: form.availableUnits ? Number(form.availableUnits) : undefined,
-        additionalNotes: form.additionalNotes || undefined,
+        additionalNotes: form.additionalNotes.trim() ? form.additionalNotes.trim() : undefined,
         submittedAt: serverTimestamp(),
       } satisfies Record<string, unknown>;
+
+      Object.keys(payload).forEach((key) => {
+        const value = payload[key as keyof typeof payload];
+        if (value === undefined || value === '') {
+          delete (payload as Record<string, unknown>)[key];
+        }
+      });
 
       let applicationId = existingApplication?.id;
 
